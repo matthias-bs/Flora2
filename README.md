@@ -11,7 +11,7 @@
     * via Xiaomi Mi Flora Plant Sensors (Bluetooth Low Energy)
     * via capacitive soil moisture sensors (wired)
 * Tank low / tank empty status monitoring with XKC-Y25-T12V (Non-Contact Liquid Level Sensor)
-* Temperature sensor DS18B20 (optional)
+* Temperature sensor [DS18B20](https://www.maximintegrated.com/en/products/sensors/DS18B20.html) (optional)
 * Weather (i.e. Temperature, Barometric Pressure and Humidity) Sensor BME280 (optional)
 * Pump Control (5 or 12 Volts) with [Infineon BTS117](https://www.infineon.com/cms/en/product/power/smart-low-side-high-side-switches/low-side-switches/classic-hitfet-24v/bts117/) _N channel vertical power FET in Smart SIPMOS® technology_
 * Automatic and manual Irrigation Control with one or two Pumps
