@@ -18,4 +18,4 @@
     </tr>
 </table>
 
- Size 5 hydraulic pipe clamps (acc. to DIN 3015-Part 1) can be used to fix the solar cell and charger/battery mounting plates to a 42mm balcony railing.
+Size 5 hydraulic pipe clamps (acc. to DIN 3015-Part 1) can be used to fix the solar cell and charger/battery mounting plates to a 42mm balcony railing -- well, something less sophisticated might be sufficient...
