@@ -10,7 +10,12 @@
   
   B_target: 73,0
   
+  -> using "BOPLA EM 217 F" instead
+  
 - No mounting holes for case "BOPLA EM 220 F"
+
+  -> using "BOPLA EM 217 F" with base plate ([dxf](../12_mounting/flora2_base_plate.dxf) | [pdf](../12_mounting/flora2_base_plate.pdf))
+
 - Wrong footprint for U1 ESP32 DevKit
   
   B_actual:  22,86mm (fits HiLetgo ESP-32S!)
