@@ -21,7 +21,7 @@
 - Add pull-down resistor 10 kOhm at gate of Q3, otherwise Sensor_PWR_int wpuld be active in Deep-Sleep-Mode (**see patch p1**)
 
 **Patch p1**
-![Patch p1](08_hardware/flora2_pcb_v1.0p1_patch_q4.png)
+![Patch p1](flora2_pcb_v1.0p1_patch_q4.png)
 
 ## Open Issues
 - add capacitors 100nF parallel to ADC inputs
