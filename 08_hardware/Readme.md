@@ -30,3 +30,18 @@
 - add pull-down resistors for pump drivers (opt.)
 - reduce Standby-Power in Deep-Sleep-Mode (opt.)
     - remove R10 or LED2 (red) from ESP-32S module
+
+## Copyright Notice
+Image: https://de.123rf.com/lizenzfreie-bilder/90587529.html
+
+Name:
+
+(de) Gießkanne und Blumen in Töpfen. Bewässerungssymbol lokalisiert auf weißem Hintergrund
+
+(en) Watering can and flowers in pots. Irrigation symbol isolated on white background
+
+File No.: 90587529
+
+Copyright: [nikolae](https://www.123rf.com/profile_nikolae/)
+
+Please check license on 123RF when using the image. Using the image as silkscreen print on PCB for non-commercial purposes was agreed upon by 123RF.
