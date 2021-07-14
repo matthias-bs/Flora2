@@ -17,3 +17,7 @@
       <td>PCB to Connectors Wiring Table</a>
     </tr>
 </table>
+
+## Note:
+
+The pump drivers are low-side switches -- connect pump's **plus**-wire to **positive connector of power supply** and pump's **minus**-wire to PCB terminal **P1** or **P2**, respectively.  
