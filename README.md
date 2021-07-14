@@ -16,7 +16,7 @@
 * Pump Control (5 or 12 Volts) with [Infineon BTS117](https://www.infineon.com/cms/en/product/power/smart-low-side-high-side-switches/low-side-switches/classic-hitfet-24v/bts117/) _N channel vertical power FET in Smart SIPMOS® technology_
 * Automatic and manual Irrigation Control with one or two Pumps
 * Status Reports via Email (HTML) with complex Trigger Filtering (limited Availability due to Memory Restrictions)
-* Power Supply from Lithium-Ion Battery charged by 5 W Solar Panel (optional)
+* Power Supply from [Solar Power Manager](https://www.waveshare.com/wiki/Solar_Power_Manager) with Lithium-Ion Battery and [6 V/5 W Solar Panel](https://www.waveshare.com/Solar-Panel-6V-5W.htm) (optional)
 * Battery Voltage Monitoring (optional)
 * Controlling and Monitoring via MQTT over WiFi
 
