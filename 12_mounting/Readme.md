@@ -17,3 +17,5 @@
       <td>Mounting Plate for <a href="https://www.waveshare.com/Solar-Panel-6V-5W.htm">Waveshare 6 V/5 W Solar Panel</a>
     </tr>
 </table>
+
+ Size 5 hydraulic pipe clamps (acc. to DIN 3015-Part 1) can be used to fix the solar cell and charger/battery mounting plates to a 42mm balcony railing.
