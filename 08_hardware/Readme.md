@@ -18,7 +18,7 @@
 
 - Wrong footprint for U1 ESP32 DevKit
   
-  B_actual:  22,86mm (fits HiLetgo ESP-32S!)
+  B_actual:  22,86mm (fits [HiLetgo ESP-32S](http://www.hiletgo.com/ProductDetail/1906566.html)!)
   
   B_target: 25,25mm (fits AZ-Delivery ESP32-DevKitC V4/JoyIt NodeMCU ESP32)
   
