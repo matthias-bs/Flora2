@@ -13,7 +13,7 @@
 * Tank low / tank empty status monitoring with XKC-Y25-T12V (Non-Contact Liquid Level Sensor)
 * Temperature sensor DS18B20 (optional)
 * Weather (i.e. Temperature, Barometric Pressure and Humidity) Sensor BME280 (optional)
-* Pump Control (5 or 12 Volts) with [Infineon BTS117](https://www.infineon.com/cms/en/product/power/smart-low-side-high-side-switches/low-side-switches/classic-hitfet-24v/bts117/) "N channel vertical power FET in Smart SIPMOS® technology"
+* Pump Control (5 or 12 Volts) with [Infineon BTS117](https://www.infineon.com/cms/en/product/power/smart-low-side-high-side-switches/low-side-switches/classic-hitfet-24v/bts117/) _N channel vertical power FET in Smart SIPMOS® technology_
 * Automatic and manual Irrigation Control with one or two Pumps
 * Status Reports via Email (HTML) with complex Trigger Filtering (limited Availability due to Memory Restrictions)
 * Power Supply from Lithium-Ion Battery charged by 5 W Solar Panel (optional)
