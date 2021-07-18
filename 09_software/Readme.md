@@ -12,103 +12,107 @@
 <tbody>
   <tr>
     <td>adc1_cal.py</td>
-    <td></td>
+    <td>MicroPython ESP32 ADC1 conversion using V_ref calibration value</td>
   </tr>
   <tr>
     <td>alert.py</td>
-    <td></td>
+    <td>Alert class; detects Changes / Range Violations of Sensor Data and System Status, implements filter to control frequency of Email Reports</td>
   </tr>
   <tr>
     <td>bme280.py</td>
-    <td></td>
+    <td>BME280 Temperature/Barometric Pressure/Humidity Sensor Library</td>
   </tr>
   <tr>
     <td>boot.py</td>
-    <td></td>
+    <td>Empty MicroPython Boot Code</td>
   </tr>
   <tr>
     <td>ConfigParser.py</td>
-    <td></td>
+    <td>Minimal and Functional Version of CPython's ConfigParser Module</td>
+  </tr>
+  <tr>
+    <td>config.ini</td>
+    <td><b>User's Configuration File</b></td>
   </tr>
   <tr>
     <td>config.py</td>
-    <td></td>
+    <td><b>Default application settings and the Settings class with attributes from the configuration file</b></td>
   </tr>
   <tr>
     <td>flora_email.py</td>
-    <td></td>
+    <td>Email class; a wrapper around umail or email.message, respectively</td>
   </tr>
   <tr>
     <td>flora_mqtt.py</td>
-    <td></td>
+    <td>flora2 MQTT functions</td>
   </tr>
   <tr>
     <td>garbage_collect.py</td>
-    <td></td>
+    <td>gcollect() and meminfo() Helper Functions</td>
   </tr>
   <tr>
     <td>gpio.py</td>
-    <td></td>
+    <td>A stub (i.e. non-functional(!) replacement) for RPi.GPIO on other systems than Raspberry Pi</td>
   </tr>
   <tr>
     <td>irrigation.py</td>
-    <td></td>
+    <td>Irrigation class; manual and automatic Irrigation</td>
   </tr>
   <tr>
     <td>main.py</td>
-    <td></td>
+    <td>flora2 Main Code</td>
   </tr>
   <tr>
     <td>miflora.py</td>
-    <td></td>
+    <td>MicroPython Library for Xiaomi Mi Flora (aka. flower care) BLE Plant Sensors</td>
   </tr>
   <tr>
     <td>moisture.py</td>
-    <td></td>
+    <td>Moisture class; analog Moisture Sensor Reading</td>
   </tr>
   <tr>
     <td>print_line.py</td>
-    <td></td>
+    <td>print_line() function; printing with time stamp and some formatting</td>
   </tr>
   <tr>
     <td>pump.py</td>
-    <td></td>
+    <td>Pump class; Pump hardware control/status, software busy flag and timestamp</td>
   </tr>
   <tr>
     <td>report.py</td>
-    <td></td>
+    <td>Report class; generates HTML report with various sensor/plant and system data</td>
   </tr>
   <tr>
     <td>secrets.py</td>
-    <td></td>
+    <td><b>User defined constants to be kept secret</b></td>
   </tr>
   <tr>
     <td>sensor_power.py</td>
-    <td></td>
+    <td>Sensor_Power class; controls the sensor power via GPIO</td>
   </tr>
   <tr>
     <td>sensor.py</td>
-    <td></td>
+    <td>Sensor class; stores sensor and plant data, compares sensor data with plant data and checks sensor battery and data validity</td>
   </tr>
   <tr>
     <td>tank.py</td>
-    <td></td>
+    <td>Tank class; tank fill level status values <low> and <empty> according to sensor outputs via GPIO pins</td>
   </tr>
   <tr>
     <td>temperature.py</td>
-    <td></td>
+    <td>MicroPython Temperature class; DS18x20 OneWire Temperature Sensor Value</td>
   </tr>
   <tr>
     <td>umail.py</td>
-    <td></td>
+    <td>uMail (MicroMail) for MicroPython</td>
   </tr>
   <tr>
     <td>weather.py</td>
-    <td></td>
+    <td>Weather Sensor Data; temperature, humidity and barometric pressure from BME280 sensor connected to I2C bus interface</td>
   </tr>
   <tr>
     <td>wifi.py</td>
-    <td></td>
+    <td>WiFi Connection Functions</td>
   </tr>
 </tbody>
 </table>
