@@ -1,5 +1,37 @@
 # flora2 - Hardware
 
+## Files
+<table>
+<thead>
+  <tr>
+    <th>File</th>
+    <th>Description</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td><a href="https://github.com/matthias-bs/Flora2/blob/main/08_hardware/flora2.fzz" target="_blank" rel="noopener noreferrer">flora2.fzz</a></td>
+    <td>Fritzing Schematic and PCB</td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/matthias-bs/Flora2/blob/main/08_hardware/flora2_pcb.pdf" target="_blank" rel="noopener noreferrer">flora2_pcb.pdf</a></td>
+    <td>Printed Circuit Board<br></td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/matthias-bs/Flora2/blob/main/08_hardware/flora2_sch.pdf" target="_blank" rel="noopener noreferrer">flora2_sch.pdf</a></td>
+    <td>Schematic</td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/matthias-bs/Flora2/blob/main/08_hardware/flora2_pcb_v1.0p1_patch_q4.pdf" target="_blank" rel="noopener noreferrer">flora2_pcb_v1.0p1_patch_q4.pdf</a></td>
+    <td>Description of Patch p1 (Q4 Pin Mismatch)</td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/matthias-bs/Flora2/blob/main/08_hardware/flora2_pcb_v1.0p1_patch_q4.png" target="_blank" rel="noopener noreferrer">flora2_pcb_v1.0p1_patch_q4.png</a></td>
+    <td>Description of Patch p1 (Q4 Pin Mismatch)</td>
+  </tr>
+</tbody>
+</table>
+
 ## Bugs
 
 - Distance between D1-4 and nearby resistors too small
