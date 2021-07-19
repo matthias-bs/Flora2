@@ -20,6 +20,7 @@ Some minor points:
 - Night Time Detection deserves some clean-up
 - Logging / Debug Printing depending on VERBOSITY could be improved
 - Wi-Fi Manager integration failed due to lack of memory
+- Garbage collection is basically integrated by trial-and-error 
 
 
 ## Files
