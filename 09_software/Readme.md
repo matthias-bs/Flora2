@@ -2,7 +2,7 @@
 
 ## Open Issues
 
-- Sending Email Reports works only partly (depending on Configuration)
+- Sending Email reports works only partly (depending on configuration)
 
     Sending Email works only if sufficient memory is available due to the relative high SSL memory requirements. For example, a configuration with three analog moisture sensor leaves enough memory, another with two Miflora BLE sensor does not. At least the program handles the out-of-memory exception gracefully.
 
