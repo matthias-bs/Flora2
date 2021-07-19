@@ -25,6 +25,10 @@ Some minor points:
 
 ## Files
 
+**Note:**
+
+Due to ESP32's memory restrictions, the Python source code (**.py**) must be compiled to bytecode (**.mpy**) using **mpy-cross** (see  [MicroPython Glossary - cross-compiler](https://docs.micropython.org/en/latest/reference/glossary.html#term-cross-compiler)).
+
 <table>
 <thead>
   <tr>
