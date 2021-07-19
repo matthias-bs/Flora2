@@ -24,9 +24,9 @@ Some minor points:
 
 ## Configuration
 
-- **secrets.py** must be modified according to your WiFi, MQTT and SMTP configuration!!!
-- **config.ini** must be modified according to your hardware setup, plants and personal taste!
-- It might be necessary to modify **config.py**, too.
+- [**secrets.py**](secrets.py) must be modified according to your WiFi, MQTT and SMTP configuration!!!
+- [**config.ini**](config.ini) must be modified according to your hardware setup, plants and personal taste!
+- It might be necessary to modify [**config.py**](config.py), too.
 
 
 ## Files
