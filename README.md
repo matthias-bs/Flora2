@@ -9,7 +9,7 @@
 ## Features
 * Running on Espressif ESP32 Microcontroller ([HiLetgo ESP-WROOM-32 ESP32 ESP-32S Development Board](http://www.hiletgo.com/ProductDetail/1906566.html))<br>
   (Compatibility to Raspberry Pi was planned, but is currently broken.) 
-* Software coded in [MicroPython](https://micropython.org/)
+* Software coded in [MicroPython](https://micropython.org/), must be copiled to bytecode for ESP32
 * Plant status monitorig
     * via Xiaomi Mi Flora Plant Sensors (Bluetooth Low Energy)
     * via capacitive Soil Moisture Sensors (wired)
