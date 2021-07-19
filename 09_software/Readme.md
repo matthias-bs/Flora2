@@ -22,6 +22,12 @@ Some minor points:
 - Wi-Fi Manager integration failed due to lack of memory
 - Garbage collection is basically integrated by trial-and-error 
 
+## Configuration
+
+- **secrets.py** must be modified according to your WiFi, MQTT and SMTP configuration!!!
+- **config.ini** must be modified according to your hardware setup, plants and personal taste!
+- It might be necessary to modify **config.py**, too.
+
 
 ## Files
 
