@@ -1,5 +1,27 @@
 # flora2 Software
 
+## Open Issues
+
+- Sending Email Reports works only partly (depending on Configuration)
+
+    Sending Email works only if sufficient memory is available due to the relative high SSL memory requirements. For example, a configuration with three analog moisture sensor leaves enough memory, another with two Miflora BLE sensor does not. At least the program handles the out-of-memory exception gracefully.
+
+- Secure MQTT (MQTT over TLS) is kind of buggy
+
+    As far as the MicroPython documentation goes, using the SSL Socket Wrapper or not should not make a big difference (except for memory requirements). But in fact it does! It seems the SSL Socket Object behaves different from the normal SSL Sockets regarding exceptions and polling. I racked my brain for quite a while to pin down the problem and to find a solution - to no avail yet. The current workaround is still not convincing.
+    
+- Compatibility to CPython / Raspberry Pi broken
+
+    At some point, compatibility was left behind due to tweaking the code to run on **MicroPython / ESP32** - and partly in favor of new features. With some efforts, it should be possible to re-establish compatibility to **CPython / Raspberry Pi**. As a first step, the code could be modified to run on **MicroPython / Raspberry Pi**.
+    The sources are quite cluttered with conditional sections concerning MicroPython and ESP32. GPIO handling is one of the inglorious examples...
+
+
+Some minor points:
+- Night Time Detection deserves some clean-up
+- Logging / Debug Printing depending on VERBOSITY could be improved
+- Wi-Fi Manager integration failed due to lack of memory
+
+
 ## Files
 
 <table>
