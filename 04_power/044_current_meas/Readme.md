@@ -49,12 +49,45 @@ Measurements: Ch A - DC Average - Between Rulers
   
 ## Results
 
-flora2o-20210613-pump_off-final
+### Summary
+
+**(flora2o-20210613-pump_off)**
 
 - AVG (-0.05  ;0:00  ) = 3,26 mA (Deep Sleep)
 - AVG ( 0:00  ;1:02  ) = 76 mA (active)
 - AVG ( 0:08  ;0:09.3) = 100 mA (max. WiFi activity)
 - AVG ( 0:24.3;0:46.2) = 92 mA (BLE active)
+
+### Measurement Data
+
+<table>
+<thead>
+  <tr>
+    <th>File</th>
+    <th>Description</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td><a href="flora2o-20210613-pump_off.psdata" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_off.psdata</a></td>
+    <td>Pumps off</td>
+  </tr>
+  <tr>
+    <td><a href="flora2o-20210613-pump_1.psdata" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_1.psdata</a></td>
+    <td>Pump 1 on</td>
+  </tr>
+  <tr>
+    <td><a href="flora2o-20210613-pump_2.psdata" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_2.psdata</a></td>
+    <td>Pump 2 on</td>
+  </tr>
+  <tr>
+    <td><a href="flora2o-20210613-pump_off-solar.psdata" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_off-solar.psdata</a></td>
+    <td>Solar power supply</td>
+  </tr>
+</tbody>
+</table>
+
+### Waveforms
 
 <table>
 <thead>
