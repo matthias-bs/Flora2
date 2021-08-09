@@ -16,6 +16,8 @@ Ch B +/- 5V DC
 Trigger B, rising edge, 1,0V 5%
 Measurements: Ch A - DC Average - Between Rulers
 
+[20210613-flora2o.pssettings](https://github.com/matthias-bs/Flora2/blob/main/04_power/044_current_meas/20210613-flora2o.pssettings)
+
 ## SW Marker
 
 <table>
