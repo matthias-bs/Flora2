@@ -92,7 +92,7 @@ flora2o-20210613-pump_off-final
     <td><a href="waveforms/flora2o-20210613-pump_off-wifi_peak.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_off-wifi_peak.pdf</a></td>
     <td>WiFi activity; peak current</td>
   </tr>
-<tr>
+  <tr>
     <td><a href="waveforms/flora2o-20210613-pump1-total_avg.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-total_avg.pdf</a></td>
     <td>Complete cycle with pump 1 on; average current</td>
   </tr>
@@ -116,16 +116,16 @@ flora2o-20210613-pump_off-final
     <td><a href="waveforms/flora2o-20210613-pump2-ec_cycle.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump2-ec_cycle.pdf</a></td>
     <td>Pump 2 on; electronic commutation cycle time<br></td>
   </tr>
-    <tr>
-    <td>flora2o-20210613-solar_pwr-noise.pdf</td>
+  <tr>
+    <td><a href="waveforms/flora2o-20210613-solar_pwr-noise.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-solar_pwr-noise.pdf</a></td>
     <td>Solar power supply; current noise (min./max./avg.)</td>
   </tr>
   <tr>
-    <td>flora2o-20210613-solar_pwr-noise_T.pdf</td>
+    <td><a href="waveforms/flora2o-20210613-solar_pwr-noise_T.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-solar_pwr-noise_T.pdf</a></td>
     <td>Solar power supply; current noise timing</td>
   </tr>
   <tr>
-    <td>flora2o-20210613-solar_pwr-noise_f.pdf</td>
+    <td><a href="waveforms/flora2o-20210613-solar_pwr-noise_f.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-solar_pwr-noise_f.pdf</a></td>
     <td>Solar power sopply; current noise frequency</td>
   </tr>
 </tbody>
