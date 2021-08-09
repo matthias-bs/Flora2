@@ -65,6 +65,38 @@ flora2o-20210613-pump_off-final
 </thead>
 <tbody>
   <tr>
+    <td><a href="waveforms/flora2o-20210613-pump_off-total_avg.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_off-total_avg.pdf</a></td>
+    <td>Complete cycle, pumps off; average current</td>
+  </tr>
+  <tr>
+    <td><a href="waveforms/flora2o-20210613-pump_off-active.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_off-active.pdf</a></td>
+    <td>Complete cycle - active phase, pumps off; average current</td>
+  </tr>
+  <tr>
+    <td><a href="waveforms/flora2o-20210613-pump_off-sleep_mode.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_off-sleep_mode.pdf</a></td>
+    <td>Sleep mode; average current</td>
+  </tr>
+  <tr>
+    <td><a href="waveforms/flora2o-20210613-pump_off-ble.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_off-ble.pdf</a></td>
+    <td>BLE activity; average current</td>
+  </tr>
+  <tr>
+    <td><a href="waveforms/flora2o-20210613-pump_off-ble_time.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_off-ble_time.pdf</a></td>
+    <td>BLE activity; communication duration<br></td>
+  </tr>
+  <tr>
+    <td><a href="waveforms/flora2o-20210613-pump_off-wifi.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_off-wifi.pdf</a></td>
+    <td>WiFi activity; average current</td>
+  </tr>
+  <tr>
+    <td><a href="waveforms/flora2o-20210613-pump_off-wifi_peak.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump_off-wifi_peak.pdf</a></td>
+    <td>WiFi activity; peak current</td>
+  </tr>
+<tr>
+    <td><a href="waveforms/flora2o-20210613-pump1-total_avg.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-total_avg.pdf</a></td>
+    <td>Complete cycle with pump 1 on; average current</td>
+  </tr>
+  <tr>
     <td><a href="waveforms/flora2o-20210613-pump1-avg%2Bmax.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-avg+max.pdf</a></td>
     <td>Pump 1 on; average and max. current</td>
   </tr>
@@ -73,54 +105,18 @@ flora2o-20210613-pump_off-final
     <td>Pump 1 on; electronic commutation cycle time</td>
   </tr>
   <tr>
-    <td><a href="waveforms/flora2o-20210613-pump1-ec_cycle.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-ec_cycle.pdf</a></td>
-    <td>Complete cycle with pump 1 on</td>
-  </tr>
-  <tr>
-    <td>flora2o-20210613-pump1-total_avg.pdf</td>
-    <td>Complete cycle with pump 1 on; average current</td>
-  </tr>
-  <tr>
-    <td>flora2o-20210613-pump2-avg+max.pdf</td>
-    <td>Pump 2 on; average and max. current</td>
-  </tr>
-  <tr>
-    <td>flora2o-20210613-pump2-ec_cycle.pdf</td>
-    <td>Pump 2 on; electronic commutation cycle time<br></td>
-  </tr>
-  <tr>
-    <td>flora2o-20210613-pump2-total_avg.pdf</td>
+    <td><a href="waveforms/flora2o-20210613-pump2-total_avg.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump2-total_avg.pdf</a></td>
     <td>Complete cycle with pump 2 on; average current</td>
   </tr>
   <tr>
-    <td>flora2o-20210613-pump_off-active.pdf</td>
-    <td>Complete cycle, pumps off; average current</td>
+    <td><a href="waveforms/flora2o-20210613-pump2-avg+max.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump2-avg+max.pdf</a></td>
+    <td>Pump 2 on; average and max. current</td>
   </tr>
   <tr>
-    <td>flora2o-20210613-pump_off-ble.pdf</td>
-    <td>BLE activity; average current</td>
+    <td><a href="waveforms/flora2o-20210613-pump2-ec_cycle.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump2-ec_cycle.pdf</a></td>
+    <td>Pump 2 on; electronic commutation cycle time<br></td>
   </tr>
-  <tr>
-    <td>flora2o-20210613-pump_off-ble_time.pdf</td>
-    <td>BLE activity; communication duration<br></td>
-  </tr>
-  <tr>
-    <td>flora2o-20210613-pump_off-sleep_mode.pdf</td>
-    <td>Sleep mode; average current</td>
-  </tr>
-  <tr>
-    <td>flora2o-20210613-pump_off-total_avg.pdf</td>
-    <td>Complete cycle, pumps off; average current</td>
-  </tr>
-  <tr>
-    <td>flora2o-20210613-pump_off-wifi.pdf</td>
-    <td>WiFi activity; average current</td>
-  </tr>
-  <tr>
-    <td>flora2o-20210613-pump_off-wifi_peak.pdf</td>
-    <td>WiFi activity; peak current</td>
-  </tr>
-  <tr>
+    <tr>
     <td>flora2o-20210613-solar_pwr-noise.pdf</td>
     <td>Solar power supply; current noise (min./max./avg.)</td>
   </tr>
