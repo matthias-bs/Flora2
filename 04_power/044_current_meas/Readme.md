@@ -65,15 +65,15 @@ flora2o-20210613-pump_off-final
 </thead>
 <tbody>
   <tr>
-    <td><a href="flora2o-20210613-pump1-avg%2Bmax.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-avg+max.pdf</a></td>
+    <td><a href="waveforms/flora2o-20210613-pump1-avg%2Bmax.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-avg+max.pdf</a></td>
     <td>Pump 1 on; average and max. current</td>
   </tr>
   <tr>
-    <td><a href="flora2o-20210613-pump1-ec_cycle.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-ec_cycle.pdf</a></td>
+    <td><a href="waveforms/flora2o-20210613-pump1-ec_cycle.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-ec_cycle.pdf</a></td>
     <td>Pump 1 on; electronic commutation cycle time</td>
   </tr>
   <tr>
-    <td><a href="flora2o-20210613-pump1-ec_cycle.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-ec_cycle.pdf</a></td>
+    <td><a href="waveforms/flora2o-20210613-pump1-ec_cycle.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-ec_cycle.pdf</a></td>
     <td>Complete cycle with pump 1 on</td>
   </tr>
   <tr>
