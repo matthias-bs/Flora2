@@ -55,3 +55,82 @@ flora2o-20210613-pump_off-final
 - AVG ( 0:00  ;1:02  ) = 76 mA (active)
 - AVG ( 0:08  ;0:09.3) = 100 mA (max. WiFi activity)
 - AVG ( 0:24.3;0:46.2) = 92 mA (BLE active)
+
+<table>
+<thead>
+  <tr>
+    <th>File</th>
+    <th>Description</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>[flora2o-20210613-pump1-avg%2Bmax.pdf](waveforms/flora2o-20210613-pump1-avg%2Bmax.pdf)</td>
+    <td>Pump 1 on; average and max. current</td>
+  </tr>
+  <tr>
+    <td>(flora2o-20210613-pump1-ec_cycle.pdf)</td>
+    <td>Pump 1 on; electronic commutation cycle time</td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/matthias-bs/Flora2/blob/main/04_power/044_current_meas/waveforms/flora2o-20210613-pump1-ec_cycle.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-pump1-ec_cycle.p</a></td>
+    <td>Complete cycle with pump 1 on</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump1-total_avg.pdf</td>
+    <td>Complete cycle with pump 1 on; average current</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump2-avg+max.pdf</td>
+    <td>Pump 2 on; average and max. current</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump2-ec_cycle.pdf</td>
+    <td>Pump 2 on; electronic commutation cycle time<br></td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump2-total_avg.pdf</td>
+    <td>Complete cycle with pump 2 on; average current</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump_off-active.pdf</td>
+    <td>Complete cycle, pumps off; average current</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump_off-ble.pdf</td>
+    <td>BLE activity; average current</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump_off-ble_time.pdf</td>
+    <td>BLE activity; communication duration<br></td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump_off-sleep_mode.pdf</td>
+    <td>Sleep mode; average current</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump_off-total_avg.pdf</td>
+    <td>Complete cycle, pumps off; average current</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump_off-wifi.pdf</td>
+    <td>WiFi activity; average current</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-pump_off-wifi_peak.pdf</td>
+    <td>WiFi activity; peak current</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-solar_pwr-noise.pdf</td>
+    <td>Solar power supply; current noise (min./max./avg.)</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-solar_pwr-noise_T.pdf</td>
+    <td>Solar power supply; current noise timing</td>
+  </tr>
+  <tr>
+    <td>flora2o-20210613-solar_pwr-noise_f.pdf</td>
+    <td>Solar power sopply; current noise frequency</td>
+  </tr>
+</tbody>
+</table>
