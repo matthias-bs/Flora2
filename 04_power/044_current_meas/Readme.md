@@ -126,7 +126,7 @@ flora2o-20210613-pump_off-final
   </tr>
   <tr>
     <td><a href="waveforms/flora2o-20210613-solar_pwr-noise_f.pdf" target="_blank" rel="noopener noreferrer">flora2o-20210613-solar_pwr-noise_f.pdf</a></td>
-    <td>Solar power sopply; current noise frequency</td>
+    <td>Solar power supply; current noise frequency</td>
   </tr>
 </tbody>
 </table>
