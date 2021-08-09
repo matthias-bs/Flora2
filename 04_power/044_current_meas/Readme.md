@@ -2,7 +2,8 @@
 
 
 ## Setup
-https://commons.wikimedia.org/wiki/File:WTPC_Oscilloscope-1.jpg
+![current_measurement_setup](https://user-images.githubusercontent.com/83612361/128756903-79873bf0-8608-4d68-a2b8-82456bac1f63.png)
+[Probe Image: https://commons.wikimedia.org/wiki/File:WTPC_Oscilloscope-1.jpg]
 
 Shunt: Vishay RS-2C 0,1 Ohm / 0,5% / 2,5W
 Marker: J9/Pin 9 - GPIO 0 (Pullup)
