@@ -15,35 +15,35 @@ The LTspice simulation was done, because the sensor power circuit initially did 
 </thead>
 <tbody>
   <tr>
-    <td>ZVN4206A.net</td>
+    <td><a href="ZVN4206A.net" target="_blank" rel="noopener noreferrer">ZVN4206A.net</a></td>
     <td>ZETEX ZVN4206A spice model (from https://www.diodes.com/part/view/ZVN4206A)</td>
   </tr>
   <tr>
-    <td>ZVP2106A.net</td>
+    <td><a href="ZVP2106A.net" target="_blank" rel="noopener noreferrer">ZVP2106A.net</a></td>
     <td>ZETEX ZVP2106A spice model (from https://www.diodes.com/part/view/ZVP2106A)</td>
   </tr>
   <tr>
-    <td>ZVN4206A.asy</td>
+    <td><a href="ZVN4206A.asy" target="_blank" rel="noopener noreferrer">ZVN4206A.asy</a></td>
     <td>LTspice symbol for ZVN4206A (using ZVN4206A model file)</td>
   </tr>
   <tr>
-    <td>ZVP2106A.asy</td>
+    <td><a href="ZVP2106A.asy" target="_blank" rel="noopener noreferrer">ZVP2106A.asy</a></td>
     <td>LTspice symbol for ZVP2106A (using ZVP2106A model file)</td>
   </tr>
   <tr>
-    <td>sensor_pwr.net</td>
+    <td><a href="sensor_pwr.net" target="_blank" rel="noopener noreferrer">sensor_pwr.net</a></td>
     <td>Netlist</td>
   </tr>
   <tr>
-    <td>sensor_pwr.asc</td>
+    <td><a href="sensor_pwr.asc" target="_blank" rel="noopener noreferrer">sensor_pwr.asc</a></td>
     <td>LTspice schematic</td>
   </tr>
   <tr>
-    <td>sensor_pwr.plt</td>
+    <td><a href="sensor_pwr.plt" target="_blank" rel="noopener noreferrer">sensor_pwr.plt</a></td>
     <td>LTspice plot parameters</td>
   </tr>
   <tr>
-    <td>sensor_pwr.pdf</td>
+    <td><a href="sensor_pwr.pdf" target="_blank" rel="noopener noreferrer">sensor_pwr.pdf</a></td>
     <td>Simulation plot (PDF)</td>
   </tr>
 </tbody>
