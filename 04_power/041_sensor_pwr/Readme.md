@@ -1,12 +1,15 @@
-
 # LTspice Simulation of Sensor Power Circuit (Q3/Q4)
 
 ## Introduction
 
 The LTspice simulation was done, because the sensor power circuit initially did not work. It proved that the circuit was designed properly. Further investigation revealed the Q4 footprint mismatch (see https://github.com/matthias-bs/Flora2/blob/main/08_hardware/Readme.md). 
 
+## Setup
+
+
+
 ## Schematic
-<img width="586" alt="sensor_pwr_schematic" src="https://user-images.githubusercontent.com/83612361/128792547-20495d44-f6c3-460e-8932-30eef20d5eeb.png">
+<img width="586" alt="sensor_pwr_schematic" src="https://user-images.githubusercontent.com/83612361/128794531-4419c104-c65a-4cee-8f37-7fe8dccd86cc.png">
 
 Sensor Power Switch Circuit (Load: 50 Ohms)
 
