@@ -1,0 +1,13 @@
+* C:\Users\mp\Dropbox\flora2\04_power\041_sensor_pwr\ltspice_sim\sensor_pwr.asc
+XU1 N002 N003 0 ZVN4206A
+XU2 out N002 N001 ZVP2106A
+R1 N003 ctrl 100
+R2 N002 N001 10k
+R3 0 out 50
+V1 N001 0 5
+V2 ctrl 0 PULSE(0 3.3 0.1 0 0 0 0.1 5)
+.tran 1
+.lib C:\Users\mp\Desktop\ZVN4206A.net
+.lib C:\Users\mp\Desktop\ZVP2106A.net
+.backanno
+.end
