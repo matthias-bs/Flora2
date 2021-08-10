@@ -16,11 +16,11 @@ The LTspice simulation was done, because the sensor power circuit initially did 
 <tbody>
   <tr>
     <td>ZVN4206A.net</td>
-    <td>ZETEX ZVN4206A spice model (from http://diodes.com)</td>
+    <td>ZETEX ZVN4206A spice model (from https://www.diodes.com/part/view/ZVN4206A)</td>
   </tr>
   <tr>
     <td>ZVP2106A.net</td>
-    <td>ZETEX ZVP2106A spice model (from http://diodes.com)</td>
+    <td>ZETEX ZVP2106A spice model (from https://www.diodes.com/part/view/ZVP2106A)</td>
   </tr>
   <tr>
     <td>ZVN4206A.asy</td>
