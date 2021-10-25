@@ -12,7 +12,9 @@ The Solar Power Manager can supply up to 1A @5V. Please make sure that the contr
 
 ### Battery Voltage Measurement
 
-For battery voltage measurement, an additional wire has to be soldered to the Solar Power Manager (net label *VBAT* in the schematic). A small resistor (e.g. 10 Ohms) in series to the U_bat output should be added to avoid high currents in case of a short circuit.
+For battery voltage measurement, an additional wire has to be soldered to the Solar Power Manager (net label *VBAT* in the schematic, see #1 in the photo below). A small resistor (e.g. 10 Ohms) in series to the U_bat output should be added to avoid high currents in case of a short circuit.
+
+![_waveshare_solar_power_manager-1](https://user-images.githubusercontent.com/83612361/138715438-dc2d7a39-2a25-40fc-b526-c23a9f4b0e65.jpg)
 
 On the flora2 PCB, an analog moisture input has to be used for voltage measurement. The following changes have to be made to adapt the battery voltage to the Analog-to-Digital Converter (ADC) input voltage range (see [Schematic](https://github.com/matthias-bs/Flora2/blob/main/08_hardware/flora2_sch.pdf)).
 
