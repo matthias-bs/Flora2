@@ -37,3 +37,11 @@ On the flora2 PCB, an analog moisture input has to be used for voltage measureme
     <td>100k || 100nF
   </tr>
 </table>
+
+### Battery Power Optimization
+
+In order to save battery power, some parts of the Solar Power Manager can be modified by cutting PCB traces:
+1. disconnect Battery Charge Indicator U3 with LED7..10 (see #2 in photo above)
+2. disconnect Power LED (LED11, see #3 in photo below)
+
+![_waveshare_solar_power_manager-2](https://user-images.githubusercontent.com/83612361/138716485-e03d5e66-6485-4867-9a40-441f2dd3fb52.jpg)
