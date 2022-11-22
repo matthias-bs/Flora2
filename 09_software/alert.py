@@ -280,7 +280,7 @@ class Alert:
                 # -> send alert and restart timer
                 if (VERBOSITY > 1):
                     print_line('Alert: {}(M2, repeat)'.format(self.name), console=True, sd_notify=True)
-                alert = true
+                alert = True
                 self.tstamp = time()
             if (((self.mode == 3) or (self.mode == 4)) and self.flag):
                     if (self.defer_expired()):
