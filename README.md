@@ -3,7 +3,7 @@
 
 **flora2** is a derivative of [**flora1**](https://github.com/matthias-bs/Flora1).
 
-[Image]
+![flora2](https://user-images.githubusercontent.com/83612361/236630700-53796c17-c603-4072-bc65-ac93b352fe89.jpg)
 
 
 ## Features
