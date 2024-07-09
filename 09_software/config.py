@@ -62,9 +62,9 @@ BLE_TIMEOUT         = const(12000) # timeout [ms] for Bluetooth Low Energy data 
 BME280_ADDR         = const(0x76)  # I2C bus address for BME280 weather sensor
 
 PROJECT_NAME        = 'flora'
-PROJECT_VERSION     = 'V2.0'
-PROJECT_BUILD       = '20210711'
-PROJECT_URL         = '<tbd>'
+PROJECT_VERSION     = 'V2.1.1'
+PROJECT_BUILD       = '20240709'
+PROJECT_URL         = 'https://github.com/matthias-bs/Flora2'
 
 
 ##############################################################################
@@ -94,6 +94,7 @@ GPIO_I2C_SCL         = const(25)
 # Config defaults
 _MQTT_KEEPALIVE      = const(60)
 _PROCESSING_PERIOD   = const(300)
+_PROCESSING_PERIOD2  = const(600)
 _MESSAGE_TIMEOUT     = const(900)
 _NIGHT_BEGIN         = "24:00"
 _NIGHT_END           = "00:00"
@@ -148,7 +149,10 @@ class Settings (ConfigParser):
         
         # General
         self.processing_period  = cp.getint('General', 'processing_period',         fallback=_PROCESSING_PERIOD)
-        self.sensor_batt_low    = cp.getint('General', 'batt_low',                  fallback=_BATT_LOW)
+        self.processing_period2 = cp.getint('General', 'processing_period2',        fallback=_PROCESSING_PERIOD2)
+        self.battery_weak       = cp.getint('General', 'battery_weak',              fallback=2400)
+        self.battery_low        = cp.getint('General', 'battery_low',               fallback=0)
+        self.sensor_batt_low    = cp.getint('General', 'sensor_batt_low',           fallback=_BATT_LOW)
         self.auto_report        = cp.getboolean('General', 'auto_report',           fallback=_AUTO_REPORT)
         self.auto_irrigation    = cp.getboolean('General', 'auto_irrigation',       fallback=_AUTO_IRRIGATION)
         self.irr_duration_auto1 = cp.getint('General', 'irrigation_duration_auto1', fallback=_IRR_DURATION_AUTO)
