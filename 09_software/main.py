@@ -110,6 +110,8 @@
 # 20210711 Fixed sending of MQTT status messages and handling of 
 #          boolean fallback values
 #          Fixed auto irrigation
+# 20240709 Updated include statements for MicroPython v1.23.0 compatibility 
+#          Prevent sleep mode if battery voltage input is disconnected
 #
 # ToDo:
 # 
@@ -139,8 +141,8 @@ if sys.implementation.name == "micropython":
     from miflora import Mi_Flora
     import machine
     import ntptime
-    import uerrno
-    from ubluetooth import BLE
+    import errno
+    from bluetooth import BLE
     from machine import reset
     if sys.platform == "esp32":
         import adc1_cal
@@ -304,6 +306,29 @@ def main():
     # Initialize settings
     cfg.settings = cfg.Settings(config_dir, delimiters=('=', ), inline_comment_prefixes=('#'))
     
+    if cfg.settings.battery_voltage:
+        ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
+        ubatt.atten(machine.ADC.ATTN_6DB)
+        print_line('Battery Voltage: {:4}mV'.format(ubatt.voltage))
+        
+        # First energy saving level: switch to processing_period2
+        if (ubatt.voltage < cfg.settings.battery_weak):
+            sleep_duration = cfg.settings.processing_period2
+        else:
+            sleep_duration = cfg.settings.processing_period
+        
+        # Second energy saving level: immediately go to sleep
+        if (ubatt.voltage < cfg.settings.battery_low) and (ubatt.voltage > 1000):
+            del ubatt    
+            del cfg.settings
+            wifi.deinit()
+            print_line('Low voltage - entering deep sleep')
+            machine.deepsleep(sleep_duration * 1000)
+            while True:
+                 # Thou shall not pass!
+                 pass
+        del ubatt
+      
 #    if MEMINFO:
 #    meminfo('Settings')
 
@@ -340,7 +365,7 @@ def main():
         if (not(cfg.settings.cp.has_section(sensor))):
             print_line('The configuration file "config.ini" has a sensor named {} in the [Sensors] section,'
                     .format(sensor), error=True, sd_notify=True)
-            print_line('but no plant data has provided in a section named accordingly.',
+            print_line('but no plant data has been provided in a section named accordingly.',
                     error=True, sd_notify=True)
             sys.exit(1)
 
@@ -668,7 +693,9 @@ def main():
             if (sys.platform == "esp32"):
                 sensor_power.enable(False)
 
-                if (cfg.settings.deep_sleep):
+                # Prevent deep sleep if battery voltage input is disconnected
+                # to simplify debugging/flashing 
+                if (cfg.settings.deep_sleep and ubatt.voltage > 1000):
                     save_state(alerts)
                     print_line('Entering deep sleep in 5 seconds, will wake up after {} seconds ...'
                             .format(cfg.settings.processing_period))
@@ -679,7 +706,6 @@ def main():
                     m_mqtt.mqtt_client.send_queue()
                     m_mqtt.mqtt_client.disconnect()
                     sleep(3)
-                    sleep_duration = cfg.settings.processing_period
                     del sensor_power
                     del m_tank.tank
                     del m_pump.pumps
