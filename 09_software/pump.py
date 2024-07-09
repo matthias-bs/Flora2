@@ -11,7 +11,7 @@
 # - provides <timestamp> attribute (usage is left to the application)
 # - provides <busy> attribute (usage is left to the application)
 #
-# created: 01/2021 updated: 06/2021
+# created: 01/2021 updated: 02/2021
 #
 # This program is Copyright (C) 01/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -25,8 +25,6 @@
 # 20210321 Added error() method
 # 20210329 Added sending of MQTT pings while running pump (uMQTT)
 # 20210519 Added global variable <pump>
-# 20210605 Changed global integer valiable <pump> to list <pumps>
-# 20210609 Added property <state>
 #
 # ToDo:
 # - Check/modify driver status for BTS117
@@ -46,7 +44,7 @@ if sys.implementation.name == "micropython":
 ##############################################################################
 # Global variables
 ##############################################################################
-pumps = [None, None]
+pump = None
 
 ###############################################################################
 # Pump class - Pump hardware control/status and software busy flag + timestamp
@@ -63,8 +61,8 @@ class Pump:
         p_status (int):         input pin no. for pump driver status 
         tank (Tank):            Tank object
         _drvstatus (bool):      raw value of pump driver status
-        busy (int):             pump is currently busy (has to be set explicitely)
-        timestamp (int):        timestamp (has to be set explicitely)
+        busy (bool):            pump is currently busy (has to be set explicitely)
+        timestamp (float):      timestamp (has to be set explicitely)
         status (int):           combined pump/tank status, updated by power_on() method
                                 0 after normal operation
                                 1 if tank is empty
@@ -189,18 +187,7 @@ class Pump:
         else:
             return ("error")
 
-    @property
-    def state(self):
-        """Return state (for saving to RTC RAM)"""
-        return (self.busy, self.timestamp)
-    
-    @state.setter
-    def state(self, var):
-        """Set state (for loading from RTC RAM)"""
-        (self.busy, self.timestamp) = var
-
-#    def __str__(self):
-#        return ("{}Pin# driver control: {:2}, Pin# driver status: {:2}, Status: {:>10}, Busy: {}, Timestamp: {}"
-#                .format((self.name + ' ') if (self.name != '') else '', self.p_power, self.p_status, 
-#                        self.status_str, self.busy, self.timestamp))
-#
+    def __str__(self):
+        return ("{}Pin# driver control: {:2}, Pin# driver status: {:2}, Status: {:>10}, Busy: {}, Timestamp: {}"
+                .format((self.name + ' ') if (self.name != '') else '', self.p_power, self.p_status, 
+                        self.status_str, self.busy, self.timestamp))

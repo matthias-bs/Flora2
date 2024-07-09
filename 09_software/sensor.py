@@ -8,7 +8,7 @@
 # - compares sensor data with plant data
 # - allows to check low battery, sensor data timeout and sensor data valid
 #
-# created: 01/2021 updated: 07/2021
+# created: 01/2021 updated: 05/2021
 #
 # This program is Copyright (C) 01/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -20,11 +20,6 @@
 # 20210117 Extracted from flora.py
 # 20210318 Added update_moisture_sensor() and update_temperature_sensor()
 # 20210508 Added data()
-# 20210509 Added attribute address
-# 20210523 Added config_error()
-# 20210605 Added attribute pump
-# 20210609 Added property <state>
-# 20210712 Fixed setting of attribute pump in init_plant() -> integer!
 #
 # ToDo:
 # - 
@@ -32,46 +27,13 @@
 ###############################################################################
 
 from time import time
-from print_line import print_line
-
 import json
-import config as m_config
 
 ##############################################################################
 # Global variables
 ##############################################################################
 sensors = None
 
-def config_error(sensor):
-    for option in [ 'name',
-                'pump',
-                'temp_min', 
-                'temp_max',
-                'cond_min',
-                'cond_max',
-                'moist_min',
-                'moist_lo',
-                'moist_hi',
-                'moist_max',
-                'light_min',
-                'light_irr',
-                'light_max']:
-        if (not(m_config.settings.cp.has_option(sensor, option))):
-            print_line('The configuration file "config.ini" has a section "[' + sensor + ']",',
-                       error=True, sd_notify=True)
-            print_line('but the key "' + option + '" is missing.',
-                       error=True, sd_notify=True)
-            return True
-    
-    if (m_config.settings.sensor_interface == 'ble'):
-        if (not(m_config.settings.cp.has_option(sensor, 'address'))):                
-            print_line('The configured plant sensor interface is Bluetooth LE,')
-            print_line('the configuration file "config.ini" has a section "[' + sensor + ']",',
-                        error=True, sd_notify=True)
-            print_line('but the mandatory key "address" is missing.',
-                        error=True, sd_notify=True)
-            return True
-    return False
 
 ###############################################################################
 # Sensor class - Sensor and plant data and methods
@@ -84,12 +46,11 @@ class Sensor:
         General:
         --------
         name (string):      sensor name
-        address (string):   Bluetooth LE address
-        pump (int):         pump serving this plant 
-        tstamp (int):       timestamp of last sensor data reception
+        tstamp (float):     timestamp of last sensor data reception
         plant (string):     name of the plant assigned to this sensor
         batt_min (int):     minimum battery level [%]
-        _tout (int):        max. time between data updates
+        _tout (float):      max. time between data updates
+        valid (bool):       sensor data is valid
     
         Actual sensor values:
         ---------------------
@@ -127,7 +88,6 @@ class Sensor:
         """
         # General
         self.name = sensor_name
-        self.pump = 0
         self.address = 0
         self.tstamp = 0
         self.plant = "<undefined>"
@@ -164,26 +124,42 @@ class Sensor:
         self.light_ul = False
         self.light_il = False
         self.light_oh = False
-            
-    def init_plant(self):
+    
+    def init_plant(self, plant,
+                   temp_min, temp_max,
+                   cond_min, cond_max,
+                   moist_lo, moist_hi,
+                   moist_min, moist_max,
+                   light_min, light_irr, light_max):
         """
         Initialize plant data
-        """
-        sensor = self.name
-        self.plant     = m_config.settings.cp.get(sensor, 'name')
-        self.pump      = m_config.settings.cp.getint(sensor, 'pump')
-        self.temp_min  = m_config.settings.cp.getfloat(sensor, 'temp_min')
-        self.temp_max  = m_config.settings.cp.getfloat(sensor, 'temp_max')
-        self.cond_min  = m_config.settings.cp.getint(sensor, 'cond_min')
-        self.cond_max  = m_config.settings.cp.getint(sensor, 'cond_max')
-        self.moist_min = m_config.settings.cp.getint(sensor, 'moist_min')
-        self.moist_lo  = m_config.settings.cp.getint(sensor, 'moist_lo')       
-        self.moist_hi  = m_config.settings.cp.getint(sensor, 'moist_hi')
-        self.moist_max = m_config.settings.cp.getint(sensor, 'moist_max')
-        self.light_min = m_config.settings.cp.getint(sensor, 'light_min')
-        self.light_irr = m_config.settings.cp.getint(sensor, 'light_irr')
-        self.light_max = m_config.settings.cp.getint(sensor, 'light_max')
-
+        
+        Parameters:
+            plant (string):     name of the plant assigned to this sensor
+            temp_min (float):   temperature [°C]
+            temp_max (float):   temperature [°C]
+            cond_min (int):     conductivity [µS/cm]
+            cond_max (int):     conductivity [µS/cm]
+            moist_lo (int):     moisture (inner limit) [%] 
+            moist_hi (int):     moisture (inner limit) [%]
+            moist_min (int):    moisture (outer limit) [%]
+            moist_max (int):    moisture (outer limit) [%]
+            light_min (int):    light [lux]
+            light_irr (int):    light [lux]
+            light_max (int):    light [lux]
+        """       
+        self.plant = plant
+        self.temp_min = temp_min
+        self.temp_max = temp_max
+        self.cond_min = cond_min
+        self.cond_max = cond_max
+        self.moist_lo = moist_lo
+        self.moist_hi = moist_hi
+        self.moist_min = moist_min
+        self.moist_max = moist_max
+        self.light_min = light_min
+        self.light_irr = light_irr
+        self.light_max = light_max
 
     @property
     def timeout(self):
@@ -276,13 +252,3 @@ class Sensor:
         data['light']        = self.light
         data['battery']      = self.batt
         return json.dumps(data)
-
-    @property
-    def state(self):
-        """Return state (for saving to RTC RAM)"""
-        return self.tstamp
-    
-    @state.setter
-    def state(self, var):
-        """Set state (for loading from RTC RAM)"""
-        self.tstamp = var

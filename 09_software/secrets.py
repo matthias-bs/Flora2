@@ -5,7 +5,7 @@
 #
 # Some settings can be overridden by config.ini
 #
-# created: 02/2021 updated: 03/2021
+# created: 02/2021 updated: 02/2021
 #
 # This program is Copyright (C) 02/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -29,18 +29,16 @@
 #	['ssid2', 'pwd2'],
 #	['ssidN', 'pwdN']
 #]
-
 NETWORKS = [ # SSID, PWD, [MAC] (Optional)
-	['ssid1', 'pwd1', ['25288b12423d4']],
-	['ssid2', 'pwd2'],
-	['ssidN', 'pwdN']
+
 ]
 
 
-MQTT_USERNAME = 'mqtt_username'
-MQTT_PASSWORD = 'mqtt_password'
 
-SMTP_LOGIN    = 'smtp_login'
-SMTP_PASSWD   = 'smtp_passwd'
-SMTP_EMAIL    = 'smtp_sender@somedomain.org'
-SMTP_RECEIVER = 'smtp_receiver@someotherdomain.com'
+MQTT_USERNAME = ''
+MQTT_PASSWORD = ''
+
+SMTP_LOGIN    = ''
+SMTP_PASSWD   = ''
+SMTP_EMAIL    = ''
+SMTP_RECEIVER = ''

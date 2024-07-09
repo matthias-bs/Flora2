@@ -6,7 +6,7 @@
 # - provides the tank fill level status values <low> and <empty>
 #   by reading the according sensor outputs via GPIO pins
 #
-# created: 01/2021 updated: 05/2021
+# created: 01/2021 updated: 02/2021
 #
 # This program is Copyright (C) 01/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -63,7 +63,7 @@ class Tank:
         self.p_low = pin_sensor_low
         self.p_empty = pin_sensor_empty
         
-        if sys.platform == "esp32":
+        if sys.implementation.name == "micropython" and sys.platform == "esp32":
             self.pin_low = Pin(pin_sensor_low, Pin.IN)
             self.pin_empty = Pin(pin_sensor_empty, Pin.IN)
         else:
@@ -78,7 +78,7 @@ class Tank:
         Returns:
             bool: True if tank is empty, false otherwise.
         """
-        if sys.platform == "esp32":
+        if sys.implementation.name == "micropython" and sys.platform == "esp32":
             return (self.pin_empty.value() == 1)
         else:
             return (GPIO.input(self.p_empty) == True)
@@ -91,31 +91,15 @@ class Tank:
         Returns:
             bool: True if tank is low, false otherwise.
         """
-        if sys.platform == "esp32":
+        if sys.implementation.name == "micropython" and sys.platform == "esp32":
             return (self.pin_low.value() == 1)
         else:
             return (GPIO.input(self.p_low) == True)
     
-    @property
-    def status(self):
-        """
-        Get current status of tank level.
-
-        Returns:
-            int: 0 - empty, 1 - low, 2 - o.k.
-        """
-        if self.empty:
-            return 0
-        elif self.low:
-            return 1
+    def __str__(self):
+        if (self.name != ""):
+            name_str = "Name: {} ".format(self.name)
         else:
-            return 2
-
-#    def __str__(self):
-#        if (self.name != ""):
-#            name_str = "Name: {} ".format(self.name)
-#        else:
-#            name_str = ""
-#        return ("{}Pin# low: {:2}, Pin# empty: {:2}, Low: {}, Empty: {}"
-#                .format(name_str, self.p_low, self.p_empty, self.low, self.empty))
-#
+            name_str = ""
+        return ("{}Pin# low: {:2}, Pin# empty: {:2}, Low: {}, Empty: {}"
+                .format(name_str, self.p_low, self.p_empty, self.low, self.empty))

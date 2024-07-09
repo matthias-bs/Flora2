@@ -17,7 +17,7 @@
 #   - mode = 4: same as mode 3, but alert is repeated after <repeat_time>
 #               if active state still persists
 #
-# created: 01/2021 updated: 06/2021
+# created: 01/2021 updated: 03/2021
 #
 # This program is Copyright (C) 01/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -29,8 +29,7 @@
 # 20210117 Extracted from flora.py
 # 20210321 Modified to simplify reading and writing of status vectors/flags
 #          in order to save state while in deep sleep mode (ESP32)
-# 20210323 Added state() @property/@state.setter
-# 20210609 time() returns integer - corrected comments and removed type casts 
+# 20210323 Added save_state()/load_state()
 #
 # ToDo:
 # - 
@@ -68,8 +67,7 @@ class Alert:
         - light intensity
     
     Attributes:
-        alert_tstamp (int):     timestamp set by an alert of any category (class attribute!!!)
-        tstamp (int):           timestamp set by a specific alert
+        alert_tstamp (float):   timestamp set by an alert of any category (class attribute!!!)
         defer_time (int):       defer time [s]
         repeat_time (int):      repeat time [s]
         name (string):          instance name (for debugging)
@@ -118,7 +116,7 @@ class Alert:
     @property
     def state(self):
         # Return state as tuple
-        return (Alert.alert_tstamp, self.tstamp, self.flag, self.val_ul, self.val_oh, self.status)
+        return (int(Alert.alert_tstamp), int(self.tstamp), self.flag, self.val_ul, self.val_oh, self.status)
     
     @state.setter
     def state(self, var):
@@ -280,7 +278,7 @@ class Alert:
                 # -> send alert and restart timer
                 if (VERBOSITY > 1):
                     print_line('Alert: {}(M2, repeat)'.format(self.name), console=True, sd_notify=True)
-                alert = True
+                alert = true
                 self.tstamp = time()
             if (((self.mode == 3) or (self.mode == 4)) and self.flag):
                     if (self.defer_expired()):

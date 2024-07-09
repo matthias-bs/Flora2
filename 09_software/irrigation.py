@@ -9,7 +9,7 @@
 #   - various sensor values
 #   - rest time after previous irrigation
 #
-# created: 01/2021 updated: 07/2021
+# created: 01/2021 updated: 03/2021
 #
 # This program is Copyright (C) 01/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -22,8 +22,6 @@
 # 20210202 Modified for compatibility with MicroPython
 # 20210324 Changed access to global data structures
 # 20210327 Added more workarounds for MicroPython restrictions
-# 20210605 Added support of 2nd pump
-# 20210709 Bugfixes
 #
 # ToDo:
 # - 
@@ -33,8 +31,6 @@
 import time
 import config as cfg
 import flora_mqtt as mqtt
-import pump as m_pump
-import sensor as m_sensor
 from print_line import *
 from config import DEBUG, VERBOSITY
 
@@ -51,41 +47,51 @@ class Irrigation:
     ###################################################################################################
     # Handle manual irrigation
     ###################################################################################################
-    def man_irrigation(self):
+    def man_irrigation(self, settings, pump):
         """
         Manually run irrigation
+        
+        Parameters:
+            settings (Settings):    instance of Settings class
+            mqtt_client (Client):   MQTT client
+            pump (Pump):            instance of Pump class
         """
         # Check if flag has been set (asynchronously) in 'mqtt_man_irrigation_request' 
         # message callback function
-        for i in range(2):
-            if (m_pump.pumps[i].busy == cfg.PUMP_BUSY_MAN):
-                print_line('Running pump #{} for {:d} seconds -->'.format(i+1, cfg.settings.irr_duration_man),
-                           console=True, sd_notify=True)
-                m_pump.pumps[i].power_on(cfg.settings.irr_duration_man)
-                m_pump.pumps[i].busy = 0
-                mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', str(0), qos = 1)
-                print_line('<-- Running pump #{} finished, Status: {}'.format(i+1, m_pump.pumps[i].status_str), 
-                            console=True, sd_notify=True)
+        if (pump.busy == cfg.PUMP_BUSY_MAN):
+            print_line('Running pump for {:d} seconds -->'.format(settings.irr_duration_man),
+                        console=True, sd_notify=True)
+            pump.power_on(settings.irr_duration_man)
+            pump.busy = 0
+            mqtt.mqtt_client.publish(settings.base_topic_flora + '/man_irr_stat', str(0),
+                                     qos = 2 if (sys.implementation.name != "micropython") else 1)
+            print_line('<-- Running pump finished, Status: {}'.format(pump.status_str), 
+                        console=True, sd_notify=True)
 
 
     ###################################################################################################
     # Handle automatic irrigation
     ###################################################################################################
-    def auto_irrigation(self):
+    def auto_irrigation(self, settings, sensors, pump):
         """
         Automatically run irrigation -
         depending on sensor values, time of day and time since last irrigation
 
-        Irrigation is run (per pump) if
+        Irrigation is run if
         - current time is not within night time range
         - all sensor data is up-to-date
-        - light is below the limit <light_irr> (to avoid sunburns)
+        - light is below the limit <light_irr> to avoid sunburns
         - at least one moisture level is below minimum,
           but none is above maximum
 
         The irrigation is done immediately if the rest time <irr_rest>
         since the last (automatic) irrigation has expired, otherwise it is
         scheduled until later.
+
+        Parameters:
+            settings (Settings):    instance of Settings class
+            sensors (Sensor{}):     dictionary of Sensor class
+            pump (Pump):            instance of Pump class
         
         Returns:
             bool:   true  if irrigation is scheduled
@@ -100,60 +106,52 @@ class Irrigation:
         #print('auto_irrigation(): now = {}'.format(n))
         #now['tm_hour'] = settings.night_begin_hr
         #now['tm_min'] = settings.night_begin_min
-        h = cfg.settings.night_begin_hr
-        m = cfg.settings.night_begin_min
+        h = settings.night_begin_hr
+        m = settings.night_begin_min
 
         nighttime_start = time.mktime((yy, mm, dd, h, m, s, dow, doy))
         #now['tm_hour'] = settings.night_end_hr
         #now['tm_min'] = settings.night_end_min
-        h = cfg.settings.night_end_hr
-        m = cfg.settings.night_end_min
+        h = settings.night_end_hr
+        m = settings.night_end_min
         nighttime_end = time.mktime((yy, mm, dd, h, m, s, dow, doy))
 
         now = time.mktime(time.localtime())
         if ((now >= nighttime_start) or (now < nighttime_end)):
             if (VERBOSITY > 1):
                 print_line("auto_irrigation: sleep time! Zzzz...")
-            return [False, False]
+            return (False)
 
-        # Evaluate per pump
-        activate = [False, False]
-        for p in range(2):
-            for sensor in m_sensor.sensors:
-                if (m_sensor.sensors[sensor].pump != p+1):
-                    continue
-                if (m_sensor.sensors[sensor].valid == False):
-                    # At least one sensor with timeout -> bail out
-                    break
-                if (m_sensor.sensors[sensor].light_il):
-                    # At least one light value over irrigation limit -> bail out
-                    break
-                if (m_sensor.sensors[sensor].moist_oh):
-                    # At least one moisture value over range -> bail out 
-                    activate[p] = False
-                    break
-                if (m_sensor.sensors[sensor].moist_ul):
-                    # At least one moisture value under range -> ready!
-                    activate[p] = True
-                # Else: All moisture values (regarding this pump) within desired range -> nothing to do!
+        for sensor in sensors:
+            if (sensors[sensor].valid == False):
+                # At least one sensor with timeout -> bail out 
+                return (False)
+            if (sensors[sensor].light_il):
+                # At least one light value over irrigation limit -> bail out
+                return (False)
+            if (sensors[sensor].moist_oh):
+                # At least one moisture value over range -> bail out 
+                return (False)
+            if (sensors[sensor].moist_ul):
+                # At least one moisture value under range -> ready!
+                break
+            else:
+                # All moisture values within desired range -> nothing to do!
+                return (False)
+                
+        if ((time.time() - pump.timestamp) < settings.irr_rest):
+            # All sensor values are within range, but time since last irrigation (irr_rest)
+            # has not expired yet -> bailing out
+            if (VERBOSITY > 1):
+                print_line("Auto irrigation scheduled.")
+            return (True)
         
-        schedule = [False, False]
-        for p in range(2):
-            if activate[p]:
-                if ((time.time() - m_pump.pumps[p].timestamp) < cfg.settings.irr_rest):
-                    # All sensor values are within range, but time since last irrigation (irr_rest)
-                    # has not expired yet -> bailing out
-                    if (VERBOSITY > 1):
-                        print_line("Auto irrigation: pump #{} scheduled.".format(p))
-                    schedule[p] = True
-                elif (m_pump.pumps[p].busy == 0):
-                    # Pump has not been started manually - ready!
-                    duration = cfg.settings.irr_duration_auto1 if (p == 0) else cfg.settings.irr_duration_auto2
-                    print_line("Auto irrigation: running pump #{} for {:d} seconds"
-                            .format(p+1, duration), console=True, sd_notify=True)
-                    m_pump.pumps[p].busy = cfg.PUMP_BUSY_AUTO
-                    m_pump.pumps[p].power_on(duration)
-                    m_pump.pumps[p].busy = 0
-                    m_pump.pumps[p].timestamp = time.time()
-        
-        return schedule
+        if (pump.busy == 0):
+            # Pump has not been started manually - ready!
+            print_line("Auto irrigation running for {:d} seconds"
+                    .format(settings.irr_duration_auto), console=True, sd_notify=True)
+            pump.busy = cfg.PUMP_BUSY_AUTO
+            pump.power_on(settings.irr_duration_auto)
+            pump.busy = 0
+            pump.timestamp = time.time()
+            return (False)

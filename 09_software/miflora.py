@@ -70,6 +70,8 @@
 import ubluetooth
 import time
 import struct
+import ble_advertising
+from ble_advertising import decode_services, decode_name
 import binascii
 
 from micropython import const
@@ -322,6 +324,11 @@ class Mi_Flora:
             _addr = bytes(addr)
             _addr = binascii.hexlify(_addr)            
             _adv_data = bytes(adv_data)
+#            _name = decode_name(_adv_data) or "?"
+#            _services = decode_services(adv_data)
+#            self._debug('addr_type: {}; addr: {}; adv_type: {}; rssi: {} dBm; name: {}; services: {}'.format(
+#                _addr_type, _addr, adv_type, rssi, _name, _services), 1
+#            )
 
             if adv_type in (_ADV_IND, _ADV_DIRECT_IND, _ADV_SCAN_RSP) and bytes(addr) == self.search_addr:
                 # Found a potential device, remember it and stop scanning.
@@ -516,6 +523,51 @@ class Mi_Flora:
         except OSError as e:
             pass
         self._reset()
+
+#    def discover_services(self, callback=None):
+#        """
+#        Discover services provided by connected device.
+#
+#        All discovered services are stored in 'services'.
+#        For if service with UUID provided in 'search_service' was discovered,
+#        '_start_handle' and '_end_handle' for this service are stored.
+#        
+#        See https://docs.micropython.org/en/latest/library/ubluetooth.html for gattc_discover_services().
+#        Parameters:
+#            callback (function): callback to be invoked in _IRQ_GATTC_SERVICE_DONE
+#        """
+#        self._debug("discover_services()", 1)
+#        self.services = {}
+#        if not self.is_connected():
+#            return
+#        self._serv_done_callback = callback
+#        try:
+#            self._ble.gattc_discover_services(self._conn_handle)
+#        except OSError as e:
+#            pass
+
+#    def discover_characteristics(self, start_handle, end_handle, callback=None):
+#        """
+#        Discover characteristics of connected device in range specified by start_handle/end_handle.
+#
+#        All discovered characteristics are stored in 'characteristics'.
+#        
+#        See https://docs.micropython.org/en/latest/library/ubluetooth.html for gattc_discover_services().
+#        
+#        Parameters:
+#            start_handle (int):  start of characteristic range
+#            end_handle (int):    end of characteristic range
+#            callback (function): callback to be invoked in _IRQ_GATTC_CHARACTERISTIC_DONE
+#        """
+#        self._debug("discover_characteristics()", 1)
+#        self.characteristics = {}
+#        if not self.is_connected():
+#            return
+#        self._char_done_callback = callback
+#        try:
+#            self._ble.gattc_discover_characteristics(self._conn_handle, start_handle, end_handle)
+#        except OSError as e:
+#            pass
         
     def read(self, callback):
         """
@@ -725,6 +777,16 @@ class Mi_Flora:
     """
     Helper methods
     """
+#    def on_notify(self, callback):
+#        """
+#        Set a callback for device notifications.
+#                
+#        Parameters:
+#            callback (function): callback to be invoked in _IRQ_GATTC_NOTIFY
+#        """        
+#        self._debug("on_notify()", 1)
+#        self._notify_callback = callback
+
     def _update_value(self, data):
         """
         Update value from a notification or a read access.

@@ -1,7 +1,7 @@
 ###############################################################################
 # Alert.py
 #
-# This module provides a stub (i.e. non-functional(!) replacement) for RPi.GPIO
+# This module provides a stub as (non-functional!) replacement for RPi.GPIO
 # on other systems than Raspberry Pi.
 #
 # - tries to import RPi.GPIO as GPIO
@@ -28,10 +28,9 @@ try:
     USE_GPIO_STUB = False
 except:
     USE_GPIO_STUB = True
-    #print("Using GPIO stub")
+    print("Using GPIO stub")
 else:
-    #print("Using RPi.GPIO")
-    pass
+    print("Using RPi.GPIO")
 
 #########################################################################################
 # Gpio class - A stub as replacement for RPi.GPIO on other systems than Raspberry Pi
