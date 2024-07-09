@@ -188,34 +188,35 @@ class ADC1Cal:
         return voltage
 
     
-    def __str__(self):
-        if (self.name != ""):
-            name_str = "Name: {} ".format(self.name)
-        else:
-            name_str = ""
-        
-        raw_val = self._adc.read()
-        
-        return ("{}Pin# {:2}, raw value: {}, value: {}"
-                .format(name_str, self._pin, raw_val, self.voltage))
-
-
-from time import sleep
-
-if __name__ == "__main__":
-    ADC_PIN   = 35                # ADC input pin no.
-    VREF      = 1065              # V_ref in mV (device specific value -> espefuse.py --port <port> adc_info)
-    DIV       = 100 / (100 + 200) # (R1 / R1 + R2) -> V_meas = V(R1 + R2); V_adc = V(R1)  
-    AVERAGING = 10                # no. of samples for averaging
-
-    # Using programmer-supplied calibration value
-    ubatt = ADC1Cal(ADC_PIN, DIV, VREF, AVERAGING, "ADC1 User Calibrated")
-
-    # Using efuse calibration value
-    ubatt = ADC1Cal(ADC_PIN, DIV, None, AVERAGING, "ADC1 eFuse Calibrated")
-    
-    print('ADC Vref: {:4}mV'.format(ubatt.vref))
-    
-    while 1:
-        print('Voltage:  {:4}mV'.format(ubatt.voltage))
-        sleep(5)
+#    def __str__(self):
+#        if (self.name != ""):
+#            name_str = "Name: {} ".format(self.name)
+#        else:
+#            name_str = ""
+#        
+#        raw_val = self._adc.read()
+#        
+#        return ("{}Pin# {:2}, raw value: {}, value: {}"
+#                .format(name_str, self._pin, raw_val, self.voltage))
+#
+#
+#from time import sleep
+#
+#if __name__ == "__main__":
+#    ADC_PIN   = 35                # ADC input pin no.
+#    VREF      = 1065              # V_ref in mV (device specific value -> espefuse.py --port <port> adc_info)
+#    DIV       = 100 / (100 + 200) # (R1 / R1 + R2) -> V_meas = V(R1 + R2); V_adc = V(R1)  
+#    AVERAGING = 10                # no. of samples for averaging
+#
+#    # Using programmer-supplied calibration value
+#    ubatt = ADC1Cal(ADC_PIN, DIV, VREF, AVERAGING, "ADC1 User Calibrated")
+#
+#    # Using efuse calibration value
+#    ubatt = ADC1Cal(ADC_PIN, DIV, None, AVERAGING, "ADC1 eFuse Calibrated")
+#    
+#    print('ADC Vref: {:4}mV'.format(ubatt.vref))
+#    
+#    while 1:
+#        print('Voltage:  {:4}mV'.format(ubatt.voltage))
+#        sleep(5)
+#

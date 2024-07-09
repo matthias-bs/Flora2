@@ -28,9 +28,10 @@ try:
     USE_GPIO_STUB = False
 except:
     USE_GPIO_STUB = True
-    print("Using GPIO stub")
+    #print("Using GPIO stub")
 else:
-    print("Using RPi.GPIO")
+    #print("Using RPi.GPIO")
+    pass
 
 #########################################################################################
 # Gpio class - A stub as replacement for RPi.GPIO on other systems than Raspberry Pi

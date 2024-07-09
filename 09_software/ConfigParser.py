@@ -12,7 +12,7 @@ Source: https://github.com/Mika64/micropython-lib/blob/master/configparser/Confi
     - modified read() to process a list of files, added silently ignoring non-existent files
 """
 
-TRUE_ENCODINGS = ["1", "yes", "true", "on"]
+TRUE_ENCODINGS = ["1", "yes", "true", "on", "True"]
 
 class ConfigParser:
     def __init__(self, delimiters, inline_comment_prefixes):

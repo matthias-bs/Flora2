@@ -6,7 +6,7 @@
 # - provides analog moisture sensor value
 #  
 #
-# created: 03/2021 updated: 03/2021
+# created: 03/2021 updated: 05/2021
 #
 # This program is Copyright (C) 03/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -16,6 +16,7 @@
 # History:
 #
 # 20210317 Created
+# 20210521 Modified return value in case of invalid data
 #
 # ToDo:
 # - 
@@ -65,6 +66,7 @@ class Moisture:
         self._m     = (self._y2 - self._y1) / (self._x2 - self._x1)
         self._ul    = min_val if (min_val < max_val) else max_val
         self._oh    = max_val if (max_val > min_val) else min_val
+        self.raw    = 0
         
         if sys.implementation.name == "micropython" and sys.platform == "esp32":
             # create ADC object on GPIO pin
@@ -86,25 +88,28 @@ class Moisture:
         Returns:
             bool, int: valid flag, moisture [%]
         """
-        if sys.implementation.name == "micropython" and sys.platform == "esp32":
+        if sys.platform == "esp32":
             raw_val = self._adc.read()
+            self.raw = raw_val
             valid = True if (raw_val >= self._ul and raw_val <= self._oh) else False
             moisture = int(self._m * (self._adc.read() - self._x1) + self._y1)
-            return valid, moisture if (valid) else raw_val
+            moisture = moisture if valid else raw_val
+            return (valid, moisture)
         else:
             # dummy value indicating invalid data
             return (False, -1)
 
     
-    def __str__(self):
-        if (self.name != ""):
-            name_str = "Name: {} ".format(self.name)
-        else:
-            name_str = ""
-        if (sys.platform == "esp32"):
-            raw_val = self._adc.read()
-        else:
-            raw_val = -1
-        valid, moisture = self.moisture
-        return ("{}Pin# {:2}, Pin# empty: {:2}, raw value: {}, value: {}"
-                .format(name_str, self._pin, raw_val, moisture))
+#    def __str__(self):
+#        if (self.name != ""):
+#            name_str = "Name: {} ".format(self.name)
+#        else:
+#            name_str = ""
+#        if (sys.platform == "esp32"):
+#            raw_val = self._adc.read()
+#        else:
+#            raw_val = -1
+#        valid, moisture = self.moisture
+#        return ("{}Pin# {:2}, Pin# empty: {:2}, raw value: {}, value: {}"
+#                .format(name_str, self._pin, raw_val, moisture))
+#

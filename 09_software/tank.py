@@ -96,10 +96,26 @@ class Tank:
         else:
             return (GPIO.input(self.p_low) == True)
     
-    def __str__(self):
-        if (self.name != ""):
-            name_str = "Name: {} ".format(self.name)
+    @property
+    def status(self):
+        """
+        Get current status of tank level.
+
+        Returns:
+            int: 0 - empty, 1 - low, 2 - o.k.
+        """
+        if self.empty:
+            return 0
+        elif self.low:
+            return 1
         else:
-            name_str = ""
-        return ("{}Pin# low: {:2}, Pin# empty: {:2}, Low: {}, Empty: {}"
-                .format(name_str, self.p_low, self.p_empty, self.low, self.empty))
+            return 2
+
+#    def __str__(self):
+#        if (self.name != ""):
+#            name_str = "Name: {} ".format(self.name)
+#        else:
+#            name_str = ""
+#        return ("{}Pin# low: {:2}, Pin# empty: {:2}, Low: {}, Empty: {}"
+#                .format(name_str, self.p_low, self.p_empty, self.low, self.empty))
+#

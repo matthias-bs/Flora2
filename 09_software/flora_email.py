@@ -26,6 +26,7 @@
 #          due to ESP memory constraints
 # 20210208 Replaced config by settings
 # 20210508 Added exception handling for SMTP constructor call
+# 20210608 Added base_topic_flora to Email subject
 #
 # ToDo:
 #
@@ -45,7 +46,8 @@ else:
     from email.message import EmailMessage
 
 from garbage_collect import gcollect, meminfo
-from config import settings, DEBUG, VERBOSITY, MEMINFO
+import config
+from config import DEBUG, VERBOSITY, MEMINFO
 from print_line import print_line
 
 
@@ -57,19 +59,14 @@ class Email:
     Handle e-Mails
     
     Attributes:
-        settings (Settings):   instance of Settings class
         content  (string):     content buffer (used with smtplib only)
         smtp     (SMTP):       instance of SMTP class (from uMail or smtplib, respectively)
         
     """
-    def __init__(self, settings):
+    def __init__(self):
         """
         The constructor for Email class.
-
-        Parameters:
-            settings (Settings): Settings object instance
         """
-        self.settings = settings
         self.content = ""
         self.smtp = 0
         
@@ -78,10 +75,10 @@ class Email:
 
         if (VERBOSITY > 1):
             print_line('E-Mail settings: {:s}, {:d}, {:s}, {:s}'\
-                       .format(self.settings.smtp_server, 
-                               self.settings.smtp_port, 
-                               self.settings.smtp_email, 
-                               self.settings.smtp_receiver))
+                       .format(config.settings.smtp_server, 
+                               config.settings.smtp_port, 
+                               config.settings.smtp_email, 
+                               config.settings.smtp_receiver))
         gcollect()
         
     def smtp_begin(self):
@@ -108,7 +105,7 @@ class Email:
         
         try:
             # n.b.: ssl=False enforces STARTTLS
-            self.smtp = umail.SMTP(self.settings.smtp_server, self.settings.smtp_port, ssl=False)
+            self.smtp = umail.SMTP(config.settings.smtp_server, config.settings.smtp_port, ssl=False)
         except OSError as exc:
             if (len(exc.args) > 1):
                 print_line('uMail: ...failed ({})!'.format(exc.args[1]), error=True, console=True, sd_notify=True)
@@ -122,20 +119,20 @@ class Email:
         if (VERBOSITY > 1):
             print_line('uMail:     init():  {}'.format(self.smtp), console=True, sd_notify=True)
         
-        rc = self.smtp.login(self.settings.smtp_login, self.settings.smtp_passwd)
+        rc = self.smtp.login(config.settings.smtp_login, config.settings.smtp_passwd)
         if (VERBOSITY > 1):
             print_line('uMail:     login(): {}'.format(rc), console=True, sd_notify=True)
         
-        rc = self.smtp.to(self.settings.smtp_receiver, self.settings.smtp_email)
+        rc = self.smtp.to(config.settings.smtp_receiver, config.settings.smtp_email)
         if (VERBOSITY > 1):
             print_line('uMail:     to():    {}'.format(rc), console=True, sd_notify=True)
         
         # create mail header, empty line with \r\n indicates end-of-header
-        self.smtp.write("From: <" + self.settings.smtp_email + ">\r\n")
-        self.smtp.write("To: <" + self.settings.smtp_receiver + ">\r\n")
+        self.smtp.write("From: <" + config.settings.smtp_email + ">\r\n")
+        self.smtp.write("To: <" + config.settings.smtp_receiver + ">\r\n")
         self.smtp.write("MIME-Version: 1.0\r\n")
         self.smtp.write("Content-type: text/html; charset=utf-8\r\n")
-        self.smtp.write("Subject: Flora Status\r\n\r\n")
+        self.smtp.write("Subject: Flora Status (" + config.settings.base_topic_flora + ")\r\n\r\n")
         
         return True
     
@@ -155,13 +152,13 @@ class Email:
         success = True
 
         try:
-            self.smtp = smtplib.SMTP(self.settings.smtp_server, self.settings.smtp_port)
+            self.smtp = smtplib.SMTP(config.settings.smtp_server, config.settings.smtp_port)
             if (DEBUG):
                 self.smtp.set_debuglevel(1)
             self.smtp.ehlo()  # Can be omitted
             self.smtp.starttls(context = context)
             self.smtp.ehlo()  # Can be omitted
-            self.smtp.login(self.settings.smtp_login, self.settings.smtp_passwd)
+            self.smtp.login(config.settings.smtp_login, config.settings.smtp_passwd)
 
         except:
             success = False
@@ -179,9 +176,9 @@ class Email:
         if sys.implementation.name != "micropython":
             success = True
             msg = EmailMessage()
-            msg['Subject'] = "Flora Status"
-            msg['From'] = self.settings.smtp_email
-            msg['To'] = self.settings.smtp_receiver
+            msg['Subject'] = "Flora Status (" + config.settings.base_topic_flora + ")"
+            msg['From'] = config.settings.smtp_email
+            msg['To'] = config.settings.smtp_receiver
             msg.set_content(self.content, subtype='html')
 
             try:

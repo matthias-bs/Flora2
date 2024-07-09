@@ -9,7 +9,7 @@
 # - uMQTT MicroPython MQTT client
 #   https://github.com/micropython/micropython-lib/tree/master/umqtt.robust
 #
-# created: 03/2021 updated: 05/2021
+# created: 03/2021 updated: 06/2021
 #
 # This program is Copyright (C) 03/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -22,6 +22,7 @@
 # 20210509 Added description
 # 20210519 Fixed access to tank/pump
 #          Added "Last Will"
+# 20210605 Added handling of 2nd pump
 #
 # ToDo:
 # - 
@@ -31,8 +32,7 @@
 import sys
 import os
 import json
-import tank
-import pump
+import pump as m_pump
 
 if sys.implementation.name == "micropython":
     import ussl
@@ -48,8 +48,8 @@ if sys.platform == "esp32":
 
 import config as cfg
 import sensor as s
-import report as r
-from time import sleep
+import report as m_report
+from time import sleep, sleep_ms
 from config import DEBUG, VERBOSITY, PUMP_BUSY_MAN
 from print_line import *
 from garbage_collect import gcollect
@@ -66,18 +66,27 @@ mqtt_client = None
 #############################################################################################
 # Restart
 #############################################################################################
-def restart():
-    if sys.platform == "esp32":
-        print_line('Network or MQTT handler error! Restarting...',
-                console=True, sd_notify=True)
-        sleep(10)
-        machine.reset()
-    else:
-        print_line('Network or MQTT handler error! Giving up...',
-                console=True, sd_notify=True)
-        os._exit(1)
+#def restart():
+    #if sys.platform == "esp32":
+        #print_line('Network or MQTT handler error! Restarting...',
+                #console=True, sd_notify=True)
+        #sleep(10)
+        #machine.reset()
+    #else:
+        #print_line('Network or MQTT handler error! Giving up...',
+                #console=True, sd_notify=True)
+        #os._exit(1)
 
 def lim_qos(qos):
+    """
+    Limit quality-of-service to maximum value (1) permittet by uMQTT
+
+    Parameters:
+        qos (int): desired quality-of-service
+        
+    Returns:
+        int: actual quality-of-service
+    """
     if (sys.implementation.name == "micropython") and (qos==2):
         return 1
     else:
@@ -100,74 +109,6 @@ class MQTTMessage:
         self.payload = msg
 
 
-#class MQTTClient(robust.MQTTClient):
-#    def log(self, in_reconnect, e, where='-'):
-#        if self.DEBUG:
-#            if in_reconnect:
-#                #print("mqtt {} reconnect: {}".format(where, uerrno.errorcode[e]))
-#                print("mqtt {} reconnect: {}".format(where, e.args[0]))
-#            else:
-#                #print("mqtt {}: {}".format(where, uerrno.errorcode[e]))
-#                print("mqtt {}: {}".format(where, e.args[0]))
-#           
-#    def reconnect(self):
-#        global mqtt_client
-#       
-#        i = 0
-#        clean_session = False
-#        while 1:
-#            if sys.platform == "esp32":
-#                # While a full-blown OS will (hopefully) handle reconnecting after WLAN drop,
-#                # this has to be handled by the application on ESP32.
-#                if not wifi.station.isconnected():
-#                    if (VERBOSITY > 0):
-#                        print_line('WLAN connection lost, trying to reconnect -->',
-#                                    console=True, sd_notify=False)
-#                    
-#                    # Connect to WLAN
-#                    try:
-#                        wifi.connectWiFi(wifi.station)
-#                    except OSError as e:
-#                        restart()
-#                    
-#                    while not wifi.station.isconnected():
-#                        sleep(cfg.settings.processing_period)
-#                        if (VERBOSITY > 0):
-#                            print_line('...waiting for WLAN...', console=True, sd_notify=False)
-#                    
-#                    if (VERBOSITY > 0):
-#                        print_line('<-- WLAN connection ready!', console=True, sd_notify=False)
-#            
-#            try:
-#                print_line('Trying to re-initialize MQTT connection -->')
-#                rc = super().connect(clean_session)
-#                mqtt_client = mqtt_umqtt_init()
-#                print_line('<-- MQTT connection re-established', console=True, sd_notify=True)
-#                return rc
-#            except OSError as e:
-#                self.log(True, e, 'reconnect()')
-#                i += 1
-#                self.delay(i)
-#                clean_session = True
-#                if i == cfg.WLAN_MAX_RETRIES:
-#                    restart()
-#                
-#    def connect(self, clean_session=True):
-#        while (1):
-#           try:
-#                return super().connect(clean_session)
-#            except OSError as e:
-#                self.log(False, e, 'connect()')
-#                
-                
-#    def ping(self):
-        #while 1:
-            #try:
-                #return super().ping()
-            #except OSError as e:
-                #self.log(False, e, 'ping()')
-            #self.reconnect()
-
 def mqtt_umqtt_init():
     """
     Init MQTT client and connect to MQTT broker
@@ -182,6 +123,7 @@ def mqtt_umqtt_init():
     # In order to fix this, the following steps have to be considered_
     # - convert keyfile/certificates to (binary) DER-format
     #   (the textual PEM-format is used more commonly)
+    #   $ openssl x509 -outform der -in certificatename.pem -out certificatename.der
     # - the files must be read into variables in binary mode:
     #   if settings.mqtt_keyfile:
     #        with open(settings.mqtt_keyfile, 'rb') as f:
@@ -199,41 +141,55 @@ def mqtt_umqtt_init():
 
     global mqtt_client
     
-    if sys.implementation.name == "micropython":
-        UNIQUE_ID = ubinascii.hexlify(machine.unique_id()).decode("ascii")
-    else:
-        UNIQUE_ID = ""
+    unique_id = ubinascii.hexlify(machine.unique_id()).decode("ascii")
     
+    #ssl_params = {'keyfile':None, 'certfile':None, 'ca_certs':None, 'server_hostname':None, 'server_side':False}
+    #https://forum.micropython.org/viewtopic.php?f=15&t=7334&hilit=umqtt+ssl
+    if cfg.settings.mqtt_tls:
+        with open(cfg.settings.mqtt_ca_cert, 'rb') as f:
+            ca_cert = f.read()
+    else:
+        ca_cert = None
+        
     # MQTT client initialization
-    mqtt_client = MQTTClient(client_id=(cfg.settings.base_topic_flora+UNIQUE_ID),
+    mqtt_client = MQTTClient(client_id=(cfg.settings.base_topic_flora + unique_id),
                             server=cfg.settings.mqtt_server,
                             port=cfg.settings.mqtt_port,
                             user=cfg.settings.mqtt_user,
                             password=cfg.settings.mqtt_password,
                             keepalive=cfg.settings.mqtt_keepalive,
-                            ssl=cfg.settings.mqtt_tls
-    )
-
-    mqtt_client.set_last_will(cfg.settings.base_topic_flora + '/status', "dead", qos=lim_qos(2), retain=True)
-        
-    print_line('Connecting to MQTT broker -->')
-    rc = mqtt_client.connect(clean_session=True)
+                            ssl=cfg.settings.mqtt_tls,
+                            ssl_params={"cert":"ca_cert",'server_side':False},
+                            socket_timeout=60,
+                            message_timeout=40
+                  )
+    mqtt_client.set_last_will(cfg.settings.base_topic_flora + '/status', "dead", qos=1, retain=True)
     
-    #if rc == 0:
-    print_line('<-- MQTT connection established', console=True, sd_notify=True)
-    #else:
-    #    print_line('Connection error with result code {}'.format(rc), error=True)
+    # BEGIN FIXME
+    print_line('Connecting to MQTT broker -->')
+    rc = mqtt_client.connect(clean_session=False)
+    
+    
+    if not mqtt_client.is_conn_issue():
+        print_line('<-- MQTT connection established ({} session)'.format("existing" if rc else "clean"), console=True, sd_notify=True)
         
-        #kill main thread
-    #    os._exit(1)
+    else:
+        if mqtt_client.is_conn_issue():
+            # If the connection is successful, the is_conn_issue
+            # method will not return a connection error.
+            mqtt_client.reconnect()
+#            sleep_ms(500)
+#        mqtt_client.resubscribe()
     
     # Set up MQTT message subscription and handlers
-    #mqtt_setup_messages(mqtt_client, settings, sensors)
-    mqtt_setup_messages()
+    mqtt_setup_messages(not(rc))
+    #mqtt_setup_messages()
+    # END FIXME
     
     return mqtt_client
 
-def mqtt_umqtt_cb(topic, msg):
+
+def mqtt_umqtt_cb(topic, msg, retained, dup):
     """
     uMQTT sub message callback
     
@@ -247,7 +203,7 @@ def mqtt_umqtt_cb(topic, msg):
     topic = topic.decode('utf-8')
     
     if (VERBOSITY > 1):
-        print_line("uMQTT message handler topic '{}' with msg '{}' received.".format(topic, msg),
+        print_line("uMQTT message handler: topic '{}' / msg '{}' / retained: {} / dup: {}.".format(topic, msg, retained, dup),
                    console=True, sd_notify=True)
     
     userdata = None
@@ -267,78 +223,61 @@ def mqtt_umqtt_cb(topic, msg):
         mqtt_on_message(mqtt_client, userdata, msg=MQTTMessage(topic, msg))
 
 
-def mqtt_umqtt_reconnect():
-    
-    print_line('Re-connecting to MQTT broker -->')
-    rc = mqtt_client.connect(clean_session=True)
-
-    if rc == 0:
-        print_line('<-- MQTT connection re-established', console=True, sd_notify=True)
-    else:
-        print_line('Connection error with result code {}'.format(rc), error=True)
-        
-        #kill main thread
-        os._exit(1)
-    
-    # Set up MQTT message subscription and handlers
-    # Only needed if MQTT broker is configured as non-persistent
-    #mqtt_setup_messages(mqtt_client, settings, sensors)
-    mqtt_setup_messages()
-
-
 #############################################################################################
 # MQTT - Eclipse Paho Setup
 #############################################################################################
-#if sys.implementation.name != "micropython":
-def mqtt_paho_init():
-    """
-    Init MQTT client and connect to MQTT broker
+if sys.implementation.name != "micropython":
+    def mqtt_paho_init():
+        """
+        Init MQTT client and connect to MQTT broker
 
-    Parameters:
-        settings (Settings): Settings instance 
-    """
-    global mqtt_client
-    
-    # MQTT client initialization (client ID is generated randomly)
-    mqtt_client = mqtt.Client()
-    mqtt_client.on_connect = mqtt_on_connect
+        Parameters:
+            settings (Settings): Settings instance 
+        """
+        global mqtt_client
+        
+        # MQTT client initialization (client ID is generated randomly)
+        mqtt_client = mqtt.Client()
+        mqtt_client.on_connect = mqtt_on_connect
 
-    if cfg.settings.mqtt_tls:
-    # According to the docs, setting PROTOCOL_SSLv23 "Selects the highest protocol version
-    # that both the client and server support. Despite the name, this option can select
-    # 'TLS' protocols as well as 'SSL'" - so this seems like a resonable default
-        mqtt_client.tls_set(
-            ca_certs = cfg.settings.mqtt_ca_cert,
-            keyfile  = cfg.settings.mqtt_keyfile,
-            certfile = cfg.settings.mqtt_certfile,
-            tls_version=ssl.PROTOCOL_SSLv23
-        )
+        if cfg.settings.mqtt_tls:
+        # According to the docs, setting PROTOCOL_SSLv23 "Selects the highest protocol version
+        # that both the client and server support. Despite the name, this option can select
+        # 'TLS' protocols as well as 'SSL'" - so this seems like a resonable default
+            mqtt_client.tls_set(
+                ca_certs = cfg.settings.mqtt_ca_cert,
+                keyfile  = cfg.settings.mqtt_keyfile,
+                certfile = cfg.settings.mqtt_certfile,
+                tls_version=ssl.PROTOCOL_SSLv23
+            )
 
-    if cfg.settings.mqtt_user:
-        mqtt_client.username_pw_set(cfg.settings.mqtt_user, cfg.settings.mqtt_password)
-    try:
-        print_line('Connecting to MQTT broker -->')
-        mqtt_client.connect(cfg.settings.mqtt_server,
-                            cfg.settings.mqtt_port,
-                            cfg.settings.mqtt_keepalive)
-    except:
-        print_line('MQTT connection error. Please check your settings in the ' +\
-                'configuration file "config.ini"', error=True, sd_notify=True)
+        if cfg.settings.mqtt_user:
+            mqtt_client.username_pw_set(cfg.settings.mqtt_user, cfg.settings.mqtt_password)
+        try:
+            print_line('Connecting to MQTT broker -->')
+            mqtt_client.connect(cfg.settings.mqtt_server,
+                                cfg.settings.mqtt_port,
+                                cfg.settings.mqtt_keepalive)
+        except:
+            print_line('MQTT connection error. Please check your settings in the ' +\
+                    'configuration file "config.ini"', error=True, sd_notify=True)
 
-    return mqtt_client
+        return mqtt_client
 
 
 #############################################################################################
 # MQTT - Message call back functions and subscriptions (Paho / uMQTT)
+#
+# Eclipse Paho callbacks: http://www.eclipse.org/paho/clients/python/docs/#callbacks
 #############################################################################################
-def mqtt_setup_messages():
+def mqtt_setup_messages(subscribe = True):
     """
     Subscribe to MQTT topics and set up message callbacks
     
+    Subscription can be ommitted if connecting to persisting session.
+    
     Parameters:
-        mqtt_client (Client): MQTT Client
-        settings (Settings):  Settings instance
-        sensors (Sensor{}):   dictionary of Sensor class
+        subsribe (bool): if true, subscribe to messages
     """
     if sys.implementation.name != "micropython":
         # Set topic specific message handlers
@@ -354,45 +293,46 @@ def mqtt_setup_messages():
         # umqtt only supports a single callback for all topics! 
         mqtt_client.set_callback(mqtt_umqtt_cb)
 
-
-    # Subscribe to flora control MQTT topics
-    for topic in ['man_report_cmd', 'man_irr_cmd', 'man_irr_duration_ctrl', 'auto_report_ctrl', 'auto_irr_ctrl', 'sleep_dis_ctrl']:
-        print_line('Subscribing to MQTT topic ' + cfg.settings.base_topic_flora + '/' + topic,
-                   console=True, sd_notify=True)
-        mqtt_client.subscribe(cfg.settings.base_topic_flora + '/' + topic, lim_qos(2))
-
-    if (cfg.settings.sensor_interface == 'mqtt'):
-        # Subscribe all MQTT sensor topics, e.g. "miflora-mqtt-daemon/appletree/moisture"
-        for sensor in s.sensors:
-            print_line('Subscribing to MQTT topic ' + cfg.settings.base_topic_sensors + '/' + sensor,
+    if (subscribe):
+        # Subscribe to flora control MQTT topics
+        for topic in ['man_report_cmd', 'man_irr_cmd', 'man_irr_duration_ctrl', 'auto_report_ctrl', 'auto_irr_ctrl', 'sleep_dis_ctrl']:
+            print_line('Subscribing to MQTT topic ' + cfg.settings.base_topic_flora + '/' + topic,
                     console=True, sd_notify=True)
-            mqtt_client.subscribe(cfg.settings.base_topic_sensors + '/' + sensor)
+            mqtt_client.subscribe(cfg.settings.base_topic_flora + '/' + topic, qos=1)
+
+        if (cfg.settings.sensor_interface == 'mqtt'):
+            # Subscribe all MQTT sensor topics, e.g. "miflora-mqtt-daemon/appletree/moisture"
+            for sensor in s.sensors:
+                print_line('Subscribing to MQTT topic ' + cfg.settings.base_topic_sensors + '/' + sensor,
+                        console=True, sd_notify=True)
+                mqtt_client.subscribe(cfg.settings.base_topic_sensors + '/' + sensor)
 
 
 #############################################################################################
-# MQTT - Eclipse Paho callbacks - http://www.eclipse.org/paho/clients/python/docs/#callbacks
+# MQTT callbacks
 #############################################################################################
-def mqtt_on_connect(client, userdata, flags, rc):
-    """
-    MQTT client connect initialization callback function
+if sys.implementation.name == "micropython":
+    def mqtt_on_connect(client, userdata, flags, rc):
+        """
+        MQTT client connect initialization callback function
 
-    Parameters:
-        client: client instance for this callback
-        userdata: private user data as set in Client() or user_data_set()
-        flags: response flags sent by the broker
-        rc: return code - connection result
-    """
-    if rc == 0:
-        print_line('<-- MQTT connection established', console=True, sd_notify=True)
-    else:
-        print_line('Connection error with result code {} - {}'.format(str(rc),
-                   mqtt.connack_string(rc)), error=True)
-        #kill main thread
-        os._exit(1)
+        Parameters:
+            client: client instance for this callback
+            userdata: private user data as set in Client() or user_data_set()
+            flags: response flags sent by the broker
+            rc: return code - connection result
+        """
+        if rc == 0:
+            print_line('<-- MQTT connection established', console=True, sd_notify=True)
+        else:
+            print_line('Connection error with result code {} - {}'.format(str(rc),
+                    mqtt.connack_string(rc)), error=True)
+            #kill main thread
+            os._exit(1)
 
-    # Set up MQTT message subscription and handlers
-    #mqtt_setup_messages(mqtt_client, cfg.settings, s.sensors)
-    mqtt_setup_messages()
+        # Set up MQTT message subscription and handlers
+        #mqtt_setup_messages(mqtt_client, cfg.settings, s.sensors)
+        mqtt_setup_messages()
 
 
 def mqtt_man_report_cmd(client, userdata, msg):
@@ -406,21 +346,20 @@ def mqtt_man_report_cmd(client, userdata, msg):
         userdata: private user data as set in Client() or user_data_set()
         msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
     """
-    #(tank, pump) = userdata
-    
     print_line('MQTT message "man_report_cmd" received.', console=True, sd_notify=True)
     
+    # Defer sending until sensor data has been read
+    cfg.settings.man_report = True
     # To avoid Out-of-Memory exception in SMTP constructor (using SSL) on ESP32,
     # disconnect MQTT client before sending mail
-    if sys.implementation.name == "micropython":
-        client.disconnect()
+#    if sys.implementation.name == "micropython":
+#        client.disconnect()
 
-    r.Report(cfg.settings, s.sensors, tank.tank, pump.pump)
+#    m_report.Report()
     
     # Reconnect MQTT client
-    if sys.implementation.name == "micropython":
-        mqtt_umqtt_reconnect()
-
+#    if sys.implementation.name == "micropython":
+#        mqtt_client.reconnect()
     
 def mqtt_man_irr_cmd(client, userdata, msg):
     """
@@ -433,17 +372,18 @@ def mqtt_man_irr_cmd(client, userdata, msg):
         userdata: private user data as set in Client() or user_data_set()
         msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
     """
-    #(tank, pump) = userdata
-    
-    print_line('MQTT message "man_irr_cmd" received', console=True, sd_notify=True)
-    if (pump.pump.busy):
-        print_line('Pump already busy ({:s}), ignoring request'
-                   .format("manual" if (pump.pump.busy == PUMP_BUSY_MAN) else "auto"),
-                   console=True, sd_notify=True)
-        return
+    val = int(msg.payload)
+    print_line('MQTT message "man_irr_cmd({})" received'.format(val), console=True, sd_notify=True)
+    if ((val == 1) or (val == 2)):
+        idx = val - 1
+        if (m_pump.pumps[idx].busy):
+            print_line('Pump #{} already busy ({:s}), ignoring request'
+                       .format(val, "manual" if (m_pump.pumps[idx].busy == PUMP_BUSY_MAN) else "auto"),
+                    console=True, sd_notify=True)
+            return
 
-    client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', str(1), lim_qos(2))
-    pump.pump.busy = PUMP_BUSY_MAN
+        client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', str(val), qos = 1)
+        m_pump.pumps[idx].busy = PUMP_BUSY_MAN
 
 
 def mqtt_man_irr_duration_ctrl(client, userdata, msg):

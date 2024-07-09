@@ -30,6 +30,7 @@
 # 20210321 Modified to simplify reading and writing of status vectors/flags
 #          in order to save state while in deep sleep mode (ESP32)
 # 20210323 Added save_state()/load_state()
+# 20210609 time() returns integer - corrected comments and removed type casts 
 #
 # ToDo:
 # - 
@@ -67,7 +68,8 @@ class Alert:
         - light intensity
     
     Attributes:
-        alert_tstamp (float):   timestamp set by an alert of any category (class attribute!!!)
+        alert_tstamp (int):     timestamp set by an alert of any category (class attribute!!!)
+        tstamp (int):           timestamp set by a specific alert
         defer_time (int):       defer time [s]
         repeat_time (int):      repeat time [s]
         name (string):          instance name (for debugging)
@@ -116,7 +118,7 @@ class Alert:
     @property
     def state(self):
         # Return state as tuple
-        return (int(Alert.alert_tstamp), int(self.tstamp), self.flag, self.val_ul, self.val_oh, self.status)
+        return (Alert.alert_tstamp, self.tstamp, self.flag, self.val_ul, self.val_oh, self.status)
     
     @state.setter
     def state(self, var):
