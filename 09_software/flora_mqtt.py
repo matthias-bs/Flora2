@@ -38,10 +38,10 @@ import json
 import pump as m_pump
 
 if sys.implementation.name == "micropython":
-    import ussl
+    import ssl
     from umqtt.robust2 import MQTTClient
     import machine
-    import ubinascii
+    import binascii
 else:
     import ssl
     import paho.mqtt.client as mqtt
@@ -89,7 +89,7 @@ def mqtt_umqtt_init():
     """
     global mqtt_client
     
-    unique_id = ubinascii.hexlify(machine.unique_id()).decode("ascii")
+    unique_id = binascii.hexlify(machine.unique_id()).decode("ascii")
     
     if cfg.settings.mqtt_tls:
         with open(cfg.settings.mqtt_ca_cert, "r") as f:
