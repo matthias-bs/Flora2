@@ -6,7 +6,7 @@
 # - provides analog moisture sensor value
 #  
 #
-# created: 03/2021 updated: 05/2021
+# created: 03/2021 updated: 06/2021
 #
 # This program is Copyright (C) 03/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.

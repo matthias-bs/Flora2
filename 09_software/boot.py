@@ -1,10 +1,7 @@
 ###############################################################################
 # boot.py
 #
-# This module provides the Micropython boot code
-#
-# - WLAN setup via WiFi-Manager
-# - Real Time Clock setup from NTP server
+# This module provides the Micropython boot code (now empty)
 #
 # created: 01/2021 updated: 05/2021
 #
@@ -23,9 +20,6 @@
 # 20210331 Moved WiFi stuff to wifi.py
 # 20210509 Minor improvements
 # 20210519 Moved code to main.py
-#
-# ToDo:
-# - 
 #
 ###############################################################################
 

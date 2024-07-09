@@ -10,6 +10,8 @@ Source: https://github.com/Mika64/micropython-lib/blob/master/configparser/Confi
       line by line
 20210211 MPr:
     - modified read() to process a list of files, added silently ignoring non-existent files
+20210711 MPr:
+    - modified getboolean() to allow passing of fallback as integer
 """
 
 TRUE_ENCODINGS = ["1", "yes", "true", "on", "True"]
@@ -106,7 +108,7 @@ class ConfigParser:
             if (fallback == None):
                 raise
             else:
-                return (fallback in TRUE_ENCODINGS)
+                return ((fallback in TRUE_ENCODINGS) or (fallback==1))
         
         return (self.config_dict[section][option].lower() in TRUE_ENCODINGS)
 

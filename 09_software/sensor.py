@@ -8,7 +8,7 @@
 # - compares sensor data with plant data
 # - allows to check low battery, sensor data timeout and sensor data valid
 #
-# created: 01/2021 updated: 06/2021
+# created: 01/2021 updated: 07/2021
 #
 # This program is Copyright (C) 01/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -24,6 +24,7 @@
 # 20210523 Added config_error()
 # 20210605 Added attribute pump
 # 20210609 Added property <state>
+# 20210712 Fixed setting of attribute pump in init_plant() -> integer!
 #
 # ToDo:
 # - 
@@ -170,7 +171,7 @@ class Sensor:
         """
         sensor = self.name
         self.plant     = m_config.settings.cp.get(sensor, 'name')
-        self.pump      = m_config.settings.cp.get(sensor, 'pump')
+        self.pump      = m_config.settings.cp.getint(sensor, 'pump')
         self.temp_min  = m_config.settings.cp.getfloat(sensor, 'temp_min')
         self.temp_max  = m_config.settings.cp.getfloat(sensor, 'temp_max')
         self.cond_min  = m_config.settings.cp.getint(sensor, 'cond_min')

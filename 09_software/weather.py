@@ -23,7 +23,6 @@
 #
 ###############################################################################
 
-#import sys
 import config as cfg
 from print_line import *
 

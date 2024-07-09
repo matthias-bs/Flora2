@@ -47,7 +47,7 @@ class SensorPower:
             name (string):         instance name (for debugging)
         """
         self.p_power = pin_sensor_power
-        if sys.implementation.name == "micropython" and sys.platform == "esp32":
+        if sys.platform == "esp32":
             self.pin_power = Pin(self.p_power, Pin.OUT, value = 0)
         else:
             GPIO.setup(self.p_power, GPIO.OUT)
@@ -63,11 +63,11 @@ class SensorPower:
             power (bool): power on/off
         """
         self.status = power
-        if sys.implementation.name == "micropython" and sys.platform == "esp32":
+        if sys.platform == "esp32":
             self.pin_power.value(power)
         else:
             GPIO.output(self.p_power, power)
 
-    def __str__(self):
-        return ("{}Pin# driver control: {:2}, Pin# driver status: {:2}, Status: {:>10}"
-                .format((self.name + ' ') if (self.name != '') else '', self.p_power, self.status))
+#    def __str__(self):
+#        return ("{}Pin# driver control: {:2}, Pin# driver status: {:2}, Status: {:>10}"
+#                .format((self.name + ' ') if (self.name != '') else '', self.p_power, self.status))

@@ -23,6 +23,9 @@
 # 20210519 Fixed access to tank/pump
 #          Added "Last Will"
 # 20210605 Added handling of 2nd pump
+# 20210627 Added workarounds for MQTT over TLS
+#          removed non-MicroPython MQTT code
+#          added exception handling in mqtt_man_irr_duration_ctrl()
 #
 # ToDo:
 # - 
@@ -43,9 +46,6 @@ else:
     import ssl
     import paho.mqtt.client as mqtt
 
-if sys.platform == "esp32":
-    import wifi
-
 import config as cfg
 import sensor as s
 import report as m_report
@@ -53,13 +53,6 @@ from time import sleep, sleep_ms
 from config import DEBUG, VERBOSITY, PUMP_BUSY_MAN
 from print_line import *
 
-CERT_FILE = "/DST_Root_CA_X3.pem"
-MQTT_CLIENT_ID = "ESP32"
-MQTT_HOST = "prinke.no-ip.org"
-MQTT_PORT = 8883
-MQTT_USER = "username"
-MQTT_PASSWD = "password" 
-MQTT_TOPIC = "mqtt_test"
 
 ##############################################################################
 # Global variables
@@ -105,7 +98,6 @@ def mqtt_umqtt_init():
         cert = None
 
     try:
-        #mqtt_client = MQTTClient(client_id=MQTT_CLIENT_ID, server=MQTT_HOST, port=MQTT_PORT, user=MQTT_USER, password=MQTT_PASSWD, keepalive=5000, ssl=True, ssl_params={"cert":cert, "server_side":False})
         mqtt_client = MQTTClient(client_id=(cfg.settings.base_topic_flora + unique_id),
                         server=cfg.settings.mqtt_server,
                         port=cfg.settings.mqtt_port,
@@ -122,10 +114,10 @@ def mqtt_umqtt_init():
         print_line('Connecting to MQTT broker -->')
         rc = mqtt_client.connect(clean_session=False)
     except Exception as e:
-        print('<-- Cannot connect to  MQTT broker: ' + str(e))
+        print_line('<-- Cannot connect to  MQTT broker: ' + str(e))
         raise
         
-    print_line('<-- MQTT connection established ({} session)'.format("existing" if rc else "clean"), console=True, sd_notify=True)
+    print_line('<-- MQTT connection established ({} session)'.format("existing" if rc else "clean"), sd_notify=True)
     
     # FIXME Something is quite different/wrong with SSL sockets. To allow non-secure and secure
     # communication, we currently do not check the connection now, because that would fail in the latter case.
@@ -281,11 +273,15 @@ def mqtt_man_irr_duration_ctrl(client, userdata, msg):
         userdata: private user data as set in Client() or user_data_set()
         msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
     """
-    cfg.settings.irr_duration_man = int(msg.payload)
-
-    print_line('MQTT message "man_irr_duration_ctrl({})" received'.format(cfg.settings.irr_duration_man),
-               sd_notify=True)
-    client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', msg.payload)
+    try:
+        cfg.settings.irr_duration_man = int(msg.payload)
+    except ValueError:
+        print_line('MQTT message "man_irr_duration_ctrl({})" received - syntax error'.format(msg.payload),
+                warning=True, sd_notify=True)
+    else:
+        print_line('MQTT message "man_irr_duration_ctrl({})" received'.format(cfg.settings.irr_duration_man),
+                sd_notify=True)
+        client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', msg.payload)
 
 
 def mqtt_auto_report_ctrl(client, userdata, msg):

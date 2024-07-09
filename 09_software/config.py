@@ -63,8 +63,8 @@ BME280_ADDR         = const(0x76)  # I2C bus address for BME280 weather sensor
 
 PROJECT_NAME        = 'flora'
 PROJECT_VERSION     = 'V2.0'
-PROJECT_BUILD       = '20210621'
-PROJECT_URL         = '<tbd>'
+PROJECT_BUILD       = '20210711'
+PROJECT_URL         = 'https://github.com/matthias-bs/Flora2'
 
 
 ##############################################################################

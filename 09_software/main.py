@@ -38,7 +38,7 @@
 # § only with local analog soil moisture sensors
 # + optional
 #
-# created: 02/2020 updated: 06/2021
+# created: 02/2020 updated: 07/2021
 #
 # This program is Copyright (C) 02/2020 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -107,6 +107,9 @@
 # 20210609 Modified load_state()/save_state() and added items
 # 20210622 Updated adc1_cal, improved analog moisture sensor data evaluation
 #          Added BLE exception handling
+# 20210711 Fixed sending of MQTT status messages and handling of 
+#          boolean fallback values
+#          Fixed auto irrigation
 #
 # ToDo:
 # 
@@ -449,7 +452,6 @@ def main():
 #         meminfo('Alerts')
         
     gcollect()
-        
     if (sys.platform == "esp32") and (machine.reset_cause() == machine.DEEPSLEEP_RESET):
         load_state(alerts)
     
@@ -512,8 +514,6 @@ def main():
                     print_line('Moisture sensor "{}" value={} - out of range. Check connection and power settings.'
                                .format(sensor, moist_val),
                                error=True, sd_notify=True)
-                # TBD remove after testing
-                print_line("{} - raw value: {}".format(sensor, moisture[sensor].raw))
         
         # Mark4 BLE start
         #pin_mark.value(1)
@@ -624,9 +624,9 @@ def main():
                 m_mqtt.mqtt_client.reconnect()
 
         # Publish status flags/values
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/auto_report_stat', str(cfg.settings.auto_report),
+        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/auto_report_stat', '1' if cfg.settings.auto_report else '0',
                                    qos = 1, retain=True)
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/auto_irr_stat', str(cfg.settings.auto_irrigation),
+        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/auto_irr_stat', '1' if cfg.settings.auto_irrigation else '0',
                                    qos = 1, retain=True)
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', str(cfg.settings.irr_duration_man), 
                                    qos = 1, retain=True)
@@ -638,7 +638,7 @@ def main():
         # Execute manual irrigation (if requested)
         irrigation.man_irrigation()
         
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', str(0), qos = 1)
+        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', '0', qos = 1)
 
         # Execute automatic irrigation
         if (cfg.settings.auto_irrigation):

@@ -9,7 +9,7 @@
 #   - various sensor values
 #   - rest time after previous irrigation
 #
-# created: 01/2021 updated: 06/2021
+# created: 01/2021 updated: 07/2021
 #
 # This program is Copyright (C) 01/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -23,7 +23,7 @@
 # 20210324 Changed access to global data structures
 # 20210327 Added more workarounds for MicroPython restrictions
 # 20210605 Added support of 2nd pump
-# 20210809 Bugfixes
+# 20210709 Bugfixes
 #
 # ToDo:
 # - 
@@ -130,11 +130,11 @@ class Irrigation:
                     break
                 if (m_sensor.sensors[sensor].moist_oh):
                     # At least one moisture value over range -> bail out 
+                    activate[p] = False
                     break
                 if (m_sensor.sensors[sensor].moist_ul):
                     # At least one moisture value under range -> ready!
                     activate[p] = True
-                    break
                 # Else: All moisture values (regarding this pump) within desired range -> nothing to do!
         
         schedule = [False, False]

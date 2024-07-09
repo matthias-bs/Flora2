@@ -17,7 +17,7 @@
 #   - mode = 4: same as mode 3, but alert is repeated after <repeat_time>
 #               if active state still persists
 #
-# created: 01/2021 updated: 03/2021
+# created: 01/2021 updated: 06/2021
 #
 # This program is Copyright (C) 01/2021 Matthias Prinke
 # <m.prinke@arcor.de> and covered by GNU's GPL.
@@ -29,7 +29,7 @@
 # 20210117 Extracted from flora.py
 # 20210321 Modified to simplify reading and writing of status vectors/flags
 #          in order to save state while in deep sleep mode (ESP32)
-# 20210323 Added save_state()/load_state()
+# 20210323 Added state() @property/@state.setter
 # 20210609 time() returns integer - corrected comments and removed type casts 
 #
 # ToDo:
