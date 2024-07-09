@@ -1,5 +1,5 @@
 ###############################################################################
-# settings.py
+# config.py
 #
 # This module provides constants as default application settings
 # and the class Settings which mostly provides attributes set
@@ -28,6 +28,8 @@
 #          ConfigParser as soon as possible and calling garbage collector
 # 20210521 Added using micropython.const()
 # 20210608 Added support of 2nd pump
+# 20210622 Added MOIST_DIV, changed MOISTURE_MIN_VAL/MOISTURE_MAX_VAL to
+#          real sensor output voltage in mV
 #
 # ToDo:
 # - 
@@ -61,7 +63,7 @@ BME280_ADDR         = const(0x76)  # I2C bus address for BME280 weather sensor
 
 PROJECT_NAME        = 'flora'
 PROJECT_VERSION     = 'V2.0'
-PROJECT_BUILD       = '20210609'
+PROJECT_BUILD       = '20210621'
 PROJECT_URL         = '<tbd>'
 
 
@@ -111,11 +113,12 @@ MQTT_MAX_CYCLES      = const(20)           # max. no. of send/receive cycles
 PUMP_BUSY_MAN        = const(1)
 PUMP_BUSY_AUTO       = const(2)
 MOISTURE_ADC_PINS    = [34, 35, 32, 33]
-MOISTURE_MIN_VAL     = const(150)
-MOISTURE_MAX_VAL     = const(65)
+MOISTURE_MIN_VAL     = const(1250)
+MOISTURE_MAX_VAL     = const(900)
 UBATT_ADC_PIN        = const(35)           # ACD pin - mutually exclusive with any other use
 UBATT_DIV            = 100/(100+200)       # Voltage divider R1 / (R1 + R2) -> V_meas = V(R1 + R2); V_adc = V(R1)
-VREF                 = const(1065)         # V_ref in mV (device specific value -> espefuse.py --port <port> adc_info)
+MOIST_DIV            = 330/(330+220)       # Voltage divider R1 / (R1 + R2) -> V_meas = V(R1 + R2); V_adc = V(R1)
+VREF                 = None                # V_ref in mV or None for eFuse calibration value
 UBATT_SAMPLES        = const(10)           # no. of samples for averaging
 
 

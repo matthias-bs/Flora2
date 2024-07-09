@@ -1,10 +1,10 @@
-- change parameter passing to Report()
-- Reduce ble_advertising.py
++ change parameter passing to Report()
++ Reduce ble_advertising.py (-> removed)
 - Add wrapper for GPIO around RPi Python/ESP32 MicroPython modules
 + change module import names to be distinct from variable names
 + add (optional) connection to persisting MQTT session
 + move temperature sensor error message to main()
 - modify night time detection and night mode
-- change ConfigParser to separate object in config.py
++ change ConfigParser to separate object in config.py
 - check garbage collection
 

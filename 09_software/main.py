@@ -105,15 +105,19 @@
 #          Added status message
 # 20210608 Added control of 2nd pump
 # 20210609 Modified load_state()/save_state() and added items
+# 20210622 Updated adc1_cal, improved analog moisture sensor data evaluation
+#          Added BLE exception handling
 #
 # ToDo:
 # 
-# - check MQTT over SSL / port forwarding issues
-# - add SSL features for using with uMQTT
-# - check WLAN reconnection behaviour
-# - add Wi-Fi Manager - FAILED due to lack of memory
+# - fix MQTT over TLS
+# - fix email reporting (lack of memory)
 # - add daily min/max of sensor values
 # - compare light value against daily average
+#
+# Notes:
+#
+# - adding Wi-Fi Manager failed due to lack of memory
 #
 ###############################################################################
 
@@ -132,6 +136,7 @@ if sys.implementation.name == "micropython":
     from miflora import Mi_Flora
     import machine
     import ntptime
+    import uerrno
     from ubluetooth import BLE
     from machine import reset
     if sys.platform == "esp32":
@@ -296,13 +301,12 @@ def main():
     # Initialize settings
     cfg.settings = cfg.Settings(config_dir, delimiters=('=', ), inline_comment_prefixes=('#'))
     
-    if MEMINFO:
-        meminfo('Settings')
+#    if MEMINFO:
+#    meminfo('Settings')
 
     # Set BCM pin addressing mode
     GPIO.setmode(GPIO.BCM)
 
-    
     # Sensor power control object
     sensor_power = m_sensor_power.SensorPower(cfg.GPIO_SENSOR_POWER)
     
@@ -337,8 +341,8 @@ def main():
                     error=True, sd_notify=True)
             sys.exit(1)
 
-    if MEMINFO:
-        meminfo('Sensor')
+#    if MEMINFO:
+#        meminfo('Sensor')
 
     # Options expected (mandatory!) in each sensor-/plant-data section of the config-file
     # Read all plant data from the section (section name = sensor name)
@@ -373,21 +377,21 @@ def main():
     gcollect()
     
     # Init MQTT client
-    if sys.implementation.name == "micropython":
-        m_mqtt.MQTTClient.DEBUG = True
-        m_mqtt.MQTTClient.MSG_QUEUE_MAX = 1
-        m_mqtt.mqtt_umqtt_init()
-    else:
-        m_mqtt.mqtt_paho_init(cfg.settings, s.sensors)
+#    if sys.implementation.name == "micropython":
+    m_mqtt.MQTTClient.DEBUG = True
+    m_mqtt.MQTTClient.MSG_QUEUE_MAX = 1
+    m_mqtt.mqtt_umqtt_init()
+#    else:
+#        m_mqtt.mqtt_paho_init(cfg.settings, s.sensors)
 
     # Mark2 MQTT init done
-    pin_mark.value(1)
+    #pin_mark.value(1)
     
     m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
-                                qos=m_mqtt.lim_qos(1), retain=True)
+                               qos=1, retain=True)
 
-    if MEMINFO:    
-        meminfo('MQTTClient')
+#    if MEMINFO:    
+#        meminfo('MQTTClient')
 
     # Initialize irrigation
     irrigation = m_irrigation.Irrigation()
@@ -404,8 +408,7 @@ def main():
 
     if (cfg.settings.sensor_interface == 'mqtt'):
         # Wait until MQTT data is valid (this may take a while...)
-        print_line('Waiting for MQTT sensor data -->',
-               console=True, sd_notify=True)
+        print_line('Waiting for MQTT sensor data -->', sd_notify=True)
         
         for sensor in s.sensors:
             while (not(s.sensors[sensor].valid)):
@@ -414,10 +417,9 @@ def main():
                     m_mqtt.mqtt_client.ping()
                 sleep(1)
             if (VERBOSITY > 1):
-                print_line(sensor + ' ready!', console=True, sd_notify=True)
+                print_line(sensor + ' ready!', sd_notify=True)
 
-        print_line('<-- Initial reception of MQTT sensor data succeeded.',
-                console=True, sd_notify=True)
+        print_line('<-- Initial reception of MQTT sensor data succeeded.', sd_notify=True)
 
     # Init sensor value alerts
     alerts = []
@@ -443,8 +445,8 @@ def main():
     alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_e_tank_low, 'system', m_tank.tank, 'low', "Tank Low"))
     alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_e_tank_empty, 'system', m_tank.tank, 'empty', "Tank Empty"))
         
-    if MEMINFO:
-         meminfo('Alerts')
+#    if MEMINFO:
+#         meminfo('Alerts')
         
     gcollect()
         
@@ -463,13 +465,17 @@ def main():
     ###############################################################################
     while (True):
         # Mark3 Main Loop
-        pin_mark.value(0)
+        #pin_mark.value(0)
+        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
+                                   qos=1, retain=True)
         if sys.implementation.name == "micropython":
             gcollect()
             # BEGIN FIXME
+            # Note: Something is quite different/wrong with SSL sockets. For now,
+            #       we just cross fingers that our connection is good...
             # At this point in the code you must consider how to handle
             # connection errors.  And how often to resume the connection.
-            if m_mqtt.mqtt_client.is_conn_issue():
+            if cfg.settings.mqtt_tls == False and m_mqtt.mqtt_client.is_conn_issue():
                 if m_mqtt.mqtt_client.is_conn_issue():
                     # If the connection is successful, the is_conn_issue
                     # method will not return a connection error.
@@ -477,7 +483,7 @@ def main():
                 else:
                     m_mqtt.mqtt_client.resubscribe()
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
-                                    qos=1, retain=True)
+                                       qos=1, retain=True)
  
             for loop in range(cfg.MQTT_MAX_CYCLES):
                 # While Eclipse Paho maintains a network handler loop,
@@ -510,43 +516,47 @@ def main():
                 print_line("{} - raw value: {}".format(sensor, moisture[sensor].raw))
         
         # Mark4 BLE start
-        pin_mark.value(1)
+        #pin_mark.value(1)
         if (cfg.settings.sensor_interface == 'ble'):
-            ble = BLE()
-            miflora_ble = Mi_Flora(ble)
-
-            for sensor in s.sensors:
-                addr = s.sensors[sensor].address
-                print_line('Connecting to MiFlora sensor {}'.format(binascii.hexlify(addr)), error=True, sd_notify=True)
-                
-                for retries in range(cfg.BLE_MAX_RETRIES):
-                    miflora_ble.gap_connect(miflora.ADDR_TYPE_PUBLIC, addr)
+            try:
+                ble = BLE()
+                miflora_ble = Mi_Flora(ble)
+            except OSError as exc:
+                print_line('Bluetooth LE exception: {}'.format(uerrno.errorcode[exc.errno]), error=True, sd_notify=True)
+                print_line('Cannot access MiFlora sensor(s).')
+            else:
+                for sensor in s.sensors:
+                    addr = s.sensors[sensor].address
+                    print_line('Connecting to MiFlora sensor {}'.format(binascii.hexlify(addr)), sd_notify=True)
                     
-                    if miflora_ble.wait_for(miflora.S_READ_SENSOR_DONE, cfg.BLE_TIMEOUT):
-                        print_line("Battery Level: {}%".format(miflora_ble.battery))
-                        #print("Version: {}".format(miflora_ble.version))
-                        print_line("Temperature: {}°C Light: {}lx Moisture: {}% Conductivity: {}µS/cm".format(
-                            miflora_ble.temp, miflora_ble.light, miflora_ble.moist, miflora_ble.cond)
-                        )
-                        s.sensors[sensor].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
-                        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/' + sensor, s.sensors[sensor].data,
-                                                   qos = 1, retain=cfg.MQTT_DATA_RETAIN)
-                        break
+                    for retries in range(cfg.BLE_MAX_RETRIES):
+                        miflora_ble.gap_connect(miflora.ADDR_TYPE_PUBLIC, addr)
+                        
+                        if miflora_ble.wait_for(miflora.S_READ_SENSOR_DONE, cfg.BLE_TIMEOUT):
+                            print_line("Battery Level: {}%".format(miflora_ble.battery))
+                            #print("Version: {}".format(miflora_ble.version))
+                            print_line("Temperature: {}°C Light: {}lx Moisture: {}% Conductivity: {}µS/cm".format(
+                                miflora_ble.temp, miflora_ble.light, miflora_ble.moist, miflora_ble.cond)
+                            )
+                            s.sensors[sensor].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
+                            m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/' + sensor, s.sensors[sensor].data,
+                                                    qos = 1, retain=cfg.MQTT_DATA_RETAIN)
+                            break
+                        else:
+                            print_line("Reading MiFlora failed!")
+                    
+                    miflora_ble.disconnect()
+                    if miflora_ble.wait_for_connection(False, cfg.BLE_TIMEOUT):
+                        print_line("MiFlora disconnected.")
                     else:
-                        print_line("Reading MiFlora failed!")
-                
-                miflora_ble.disconnect()
-                if miflora_ble.wait_for_connection(False, cfg.BLE_TIMEOUT):
-                    print_line("MiFlora disconnected.")
-                else:
-                    print_line("MiFlora disconnect failed!")
-                    miflora_ble._reset()
-            del miflora_ble
+                        print_line("MiFlora disconnect failed!")
+                        miflora_ble._reset()
+                del miflora_ble
             del ble
             gcollect()
             
         # Mark5 BLE end
-        pin_mark.value(0)
+        #pin_mark.value(0)
         
         # FIXME
         if cfg.settings.temperature_sensor:
@@ -572,7 +582,8 @@ def main():
                                          qos = 1, retain=cfg.MQTT_DATA_RETAIN)
 
         if cfg.settings.battery_voltage:
-            ubatt = adc1_cal.ADC1Cal(cfg.UBATT_ADC_PIN, cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
+            ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
+            ubatt.atten(machine.ADC.ATTN_6DB)
             print_line('Battery Voltage: {:4}mV'.format(ubatt.voltage))
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/ubatt', 
                                      '{}'.format(ubatt.voltage), qos = 1, retain=cfg.MQTT_DATA_RETAIN)
@@ -587,7 +598,7 @@ def main():
         # Execute automatic sending of mail reports
         if ((cfg.settings.auto_report and alert) or cfg.settings.man_report):
             if (alert):
-                print_line('Alert triggered.', console=True, sd_notify=True)
+                print_line('Alert triggered.', sd_notify=True)
                 
             # To avoid Out-of-Memory exception in SMTP constructor (using SSL) on ESP32,
             # disconnect MQTT client before sending mail
@@ -684,7 +695,7 @@ def main():
                     del m_mqtt.mqtt_client
                     del cfg.settings
                     wifi.deinit()
-                    pin_mark.value(0)
+                    #pin_mark.value(0)
                     machine.deepsleep(sleep_duration * 1000)
                     while True:
                         # Thou shall not pass!
@@ -695,6 +706,7 @@ def main():
 
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "idle",
                                        qos = 1, retain=True)
+            m_mqtt.mqtt_client.send_queue()
 
             # Sleep for <processing_period> seconds
             count = 0
@@ -717,7 +729,7 @@ def main():
         else:
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "offline",
                                        qos = 1, retain=True)
-
+            m_mqtt.mqtt_client.send_queue()
             print_line('Finished in non-daemon-mode', sd_notify=True)
             mqtt.mqtt_client.disconnect()
             break
@@ -728,7 +740,7 @@ def main():
 ###############################################################################
 
 if __name__ == '__main__':
-    pin_mark = machine.Pin(0, machine.Pin.OUT, value = 1)
+    #pin_mark = machine.Pin(0, machine.Pin.OUT, value = 1)
     
     if MEMINFO:
         meminfo('Boot begin')
@@ -744,7 +756,7 @@ if __name__ == '__main__':
         reset()
     
     # Mark1 WIFI on
-    pin_mark.value(0)
+    #pin_mark.value(0)
     
     if MEMINFO:
         meminfo('Boot finished')

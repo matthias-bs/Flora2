@@ -1,5 +1,5 @@
 ###############################################################################
-# flora.py
+# flora_mqtt.py
 #
 # This module provides the flora MQTT functions
 #
@@ -52,45 +52,20 @@ import report as m_report
 from time import sleep, sleep_ms
 from config import DEBUG, VERBOSITY, PUMP_BUSY_MAN
 from print_line import *
-from garbage_collect import gcollect
 
-
-
-
+CERT_FILE = "/DST_Root_CA_X3.pem"
+MQTT_CLIENT_ID = "ESP32"
+MQTT_HOST = "prinke.no-ip.org"
+MQTT_PORT = 8883
+MQTT_USER = "username"
+MQTT_PASSWD = "password" 
+MQTT_TOPIC = "mqtt_test"
 
 ##############################################################################
 # Global variables
 ##############################################################################
 mqtt_client = None
 
-#############################################################################################
-# Restart
-#############################################################################################
-#def restart():
-    #if sys.platform == "esp32":
-        #print_line('Network or MQTT handler error! Restarting...',
-                #console=True, sd_notify=True)
-        #sleep(10)
-        #machine.reset()
-    #else:
-        #print_line('Network or MQTT handler error! Giving up...',
-                #console=True, sd_notify=True)
-        #os._exit(1)
-
-def lim_qos(qos):
-    """
-    Limit quality-of-service to maximum value (1) permittet by uMQTT
-
-    Parameters:
-        qos (int): desired quality-of-service
-        
-    Returns:
-        int: actual quality-of-service
-    """
-    if (sys.implementation.name == "micropython") and (qos==2):
-        return 1
-    else:
-        return qos
 
 #############################################################################################
 # MQTT - uMQTT (MicroPython) Setup and Tweaks
@@ -119,74 +94,52 @@ def mqtt_umqtt_init():
     Returns:
         MQTT client instance
     """
-    #FIXME SSL is basically working, but certificates/keys are not used yet 
-    # In order to fix this, the following steps have to be considered_
-    # - convert keyfile/certificates to (binary) DER-format
-    #   (the textual PEM-format is used more commonly)
-    #   $ openssl x509 -outform der -in certificatename.pem -out certificatename.der
-    # - the files must be read into variables in binary mode:
-    #   if settings.mqtt_keyfile:
-    #        with open(settings.mqtt_keyfile, 'rb') as f:
-    #            key_data = f.read()
-    # - the dictionary ssl_params must be passed in the following manner:
-    #   client = MQTTClient(client_id='esp32vroom', server=mqtt_server, port=8883, keepalive=10000, ssl=True, 
-    #                       ssl_params={"key":privkey,"cert":certpem,"server_side":False})
-    # - ssl_params is passed to ussl.wrap_sockets; the following parameters are available:
-    #   keyfile=None, certfile=None, server_side=False,
-    #   cert_reqs=CERT_NONE, *, ca_certs=None, server_hostname=None
-    # - parameters after '*' must be named
-    #
-    # A more or less complete discussion can be found here:
-    # https://forum.micropython.org/viewtopic.php?f=2&t=5166
-
     global mqtt_client
     
     unique_id = ubinascii.hexlify(machine.unique_id()).decode("ascii")
     
-    #ssl_params = {'keyfile':None, 'certfile':None, 'ca_certs':None, 'server_hostname':None, 'server_side':False}
-    #https://forum.micropython.org/viewtopic.php?f=15&t=7334&hilit=umqtt+ssl
     if cfg.settings.mqtt_tls:
-        with open(cfg.settings.mqtt_ca_cert, 'rb') as f:
-            ca_cert = f.read()
+        with open(cfg.settings.mqtt_ca_cert, "r") as f:
+            cert = f.read()
     else:
-        ca_cert = None
+        cert = None
+
+    try:
+        #mqtt_client = MQTTClient(client_id=MQTT_CLIENT_ID, server=MQTT_HOST, port=MQTT_PORT, user=MQTT_USER, password=MQTT_PASSWD, keepalive=5000, ssl=True, ssl_params={"cert":cert, "server_side":False})
+        mqtt_client = MQTTClient(client_id=(cfg.settings.base_topic_flora + unique_id),
+                        server=cfg.settings.mqtt_server,
+                        port=cfg.settings.mqtt_port,
+                        user=cfg.settings.mqtt_user,
+                        password=cfg.settings.mqtt_password,
+                        keepalive=cfg.settings.mqtt_keepalive,
+                        socket_timeout=40 if cfg.settings.mqtt_tls else 6,
+                        ssl=cfg.settings.mqtt_tls,
+                        ssl_params={"cert":cert,"server_side":False}
+        )
+        mqtt_client.set_last_will(cfg.settings.base_topic_flora + '/status', "dead", qos=1, retain=True)
         
-    # MQTT client initialization
-    mqtt_client = MQTTClient(client_id=(cfg.settings.base_topic_flora + unique_id),
-                            server=cfg.settings.mqtt_server,
-                            port=cfg.settings.mqtt_port,
-                            user=cfg.settings.mqtt_user,
-                            password=cfg.settings.mqtt_password,
-                            keepalive=cfg.settings.mqtt_keepalive,
-                            ssl=cfg.settings.mqtt_tls,
-                            ssl_params={"cert":"ca_cert",'server_side':False},
-                            socket_timeout=60,
-                            message_timeout=40
-                  )
-    mqtt_client.set_last_will(cfg.settings.base_topic_flora + '/status', "dead", qos=1, retain=True)
-    
-    # BEGIN FIXME
-    print_line('Connecting to MQTT broker -->')
-    rc = mqtt_client.connect(clean_session=False)
-    
-    
-    if not mqtt_client.is_conn_issue():
-        print_line('<-- MQTT connection established ({} session)'.format("existing" if rc else "clean"), console=True, sd_notify=True)
+        # BEGIN FIXME
+        print_line('Connecting to MQTT broker -->')
+        rc = mqtt_client.connect(clean_session=False)
+    except Exception as e:
+        print('<-- Cannot connect to  MQTT broker: ' + str(e))
+        raise
         
-    else:
-        if mqtt_client.is_conn_issue():
-            # If the connection is successful, the is_conn_issue
-            # method will not return a connection error.
-            mqtt_client.reconnect()
+    print_line('<-- MQTT connection established ({} session)'.format("existing" if rc else "clean"), console=True, sd_notify=True)
+    
+    # FIXME Something is quite different/wrong with SSL sockets. To allow non-secure and secure
+    # communication, we currently do not check the connection now, because that would fail in the latter case.
+#    else:
+#        while mqtt_client.is_conn_issue():
+#            # If the connection is successful, the is_conn_issue
+#            # method will not return a connection error.
+#            mqtt_client.reconnect()
 #            sleep_ms(500)
 #        mqtt_client.resubscribe()
     
     # Set up MQTT message subscription and handlers
     mqtt_setup_messages(not(rc))
-    #mqtt_setup_messages()
     # END FIXME
-    
-    return mqtt_client
 
 
 def mqtt_umqtt_cb(topic, msg, retained, dup):
@@ -204,65 +157,24 @@ def mqtt_umqtt_cb(topic, msg, retained, dup):
     
     if (VERBOSITY > 1):
         print_line("uMQTT message handler: topic '{}' / msg '{}' / retained: {} / dup: {}.".format(topic, msg, retained, dup),
-                   console=True, sd_notify=True)
+                   sd_notify=True)
     
-    userdata = None
+    message = MQTTMessage(topic, msg)
+    
     if (topic == cfg.settings.base_topic_flora + '/man_report_cmd'):
-        mqtt_man_report_cmd(mqtt_client, userdata, msg=MQTTMessage(topic, msg))
+        mqtt_man_report_cmd(mqtt_client, None, message)
     elif (topic == cfg.settings.base_topic_flora + '/man_irr_cmd'):
-        mqtt_man_irr_cmd(mqtt_client, userdata, msg=MQTTMessage(topic, msg))
+        mqtt_man_irr_cmd(mqtt_client, None, message)
     elif (topic == cfg.settings.base_topic_flora + '/man_irr_duration_ctrl'):
-        mqtt_man_irr_duration_ctrl(mqtt_client, userdata, msg=MQTTMessage(topic, msg))
+        mqtt_man_irr_duration_ctrl(mqtt_client, None, message)
     elif (topic == cfg.settings.base_topic_flora + '/auto_report_ctrl'):
-        mqtt_auto_report_ctrl(mqtt_client, userdata, msg=MQTTMessage(topic, msg))
+        mqtt_auto_report_ctrl(mqtt_client, None, message)
     elif (topic == cfg.settings.base_topic_flora + '/auto_irr_ctrl'):
-        mqtt_auto_irr_ctrl(mqtt_client, userdata, msg=MQTTMessage(topic, msg))
+        mqtt_auto_irr_ctrl(mqtt_client, None, message)
     elif (topic == cfg.settings.base_topic_flora + '/sleep_dis_ctrl'):
-        mqtt_sleep_dis_ctrl(mqtt_client, userdata, msg=MQTTMessage(topic, msg))
+        mqtt_sleep_dis_ctrl(mqtt_client, None, message)
     else:
-        mqtt_on_message(mqtt_client, userdata, msg=MQTTMessage(topic, msg))
-
-
-#############################################################################################
-# MQTT - Eclipse Paho Setup
-#############################################################################################
-if sys.implementation.name != "micropython":
-    def mqtt_paho_init():
-        """
-        Init MQTT client and connect to MQTT broker
-
-        Parameters:
-            settings (Settings): Settings instance 
-        """
-        global mqtt_client
-        
-        # MQTT client initialization (client ID is generated randomly)
-        mqtt_client = mqtt.Client()
-        mqtt_client.on_connect = mqtt_on_connect
-
-        if cfg.settings.mqtt_tls:
-        # According to the docs, setting PROTOCOL_SSLv23 "Selects the highest protocol version
-        # that both the client and server support. Despite the name, this option can select
-        # 'TLS' protocols as well as 'SSL'" - so this seems like a resonable default
-            mqtt_client.tls_set(
-                ca_certs = cfg.settings.mqtt_ca_cert,
-                keyfile  = cfg.settings.mqtt_keyfile,
-                certfile = cfg.settings.mqtt_certfile,
-                tls_version=ssl.PROTOCOL_SSLv23
-            )
-
-        if cfg.settings.mqtt_user:
-            mqtt_client.username_pw_set(cfg.settings.mqtt_user, cfg.settings.mqtt_password)
-        try:
-            print_line('Connecting to MQTT broker -->')
-            mqtt_client.connect(cfg.settings.mqtt_server,
-                                cfg.settings.mqtt_port,
-                                cfg.settings.mqtt_keepalive)
-        except:
-            print_line('MQTT connection error. Please check your settings in the ' +\
-                    'configuration file "config.ini"', error=True, sd_notify=True)
-
-        return mqtt_client
+        mqtt_on_message(mqtt_client, None, message)
 
 
 #############################################################################################
@@ -297,44 +209,20 @@ def mqtt_setup_messages(subscribe = True):
         # Subscribe to flora control MQTT topics
         for topic in ['man_report_cmd', 'man_irr_cmd', 'man_irr_duration_ctrl', 'auto_report_ctrl', 'auto_irr_ctrl', 'sleep_dis_ctrl']:
             print_line('Subscribing to MQTT topic ' + cfg.settings.base_topic_flora + '/' + topic,
-                    console=True, sd_notify=True)
+                    sd_notify=True)
             mqtt_client.subscribe(cfg.settings.base_topic_flora + '/' + topic, qos=1)
 
         if (cfg.settings.sensor_interface == 'mqtt'):
             # Subscribe all MQTT sensor topics, e.g. "miflora-mqtt-daemon/appletree/moisture"
             for sensor in s.sensors:
                 print_line('Subscribing to MQTT topic ' + cfg.settings.base_topic_sensors + '/' + sensor,
-                        console=True, sd_notify=True)
+                        sd_notify=True)
                 mqtt_client.subscribe(cfg.settings.base_topic_sensors + '/' + sensor)
 
 
 #############################################################################################
 # MQTT callbacks
 #############################################################################################
-if sys.implementation.name == "micropython":
-    def mqtt_on_connect(client, userdata, flags, rc):
-        """
-        MQTT client connect initialization callback function
-
-        Parameters:
-            client: client instance for this callback
-            userdata: private user data as set in Client() or user_data_set()
-            flags: response flags sent by the broker
-            rc: return code - connection result
-        """
-        if rc == 0:
-            print_line('<-- MQTT connection established', console=True, sd_notify=True)
-        else:
-            print_line('Connection error with result code {} - {}'.format(str(rc),
-                    mqtt.connack_string(rc)), error=True)
-            #kill main thread
-            os._exit(1)
-
-        # Set up MQTT message subscription and handlers
-        #mqtt_setup_messages(mqtt_client, cfg.settings, s.sensors)
-        mqtt_setup_messages()
-
-
 def mqtt_man_report_cmd(client, userdata, msg):
     """
     Send report as mail.
@@ -346,20 +234,11 @@ def mqtt_man_report_cmd(client, userdata, msg):
         userdata: private user data as set in Client() or user_data_set()
         msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
     """
-    print_line('MQTT message "man_report_cmd" received.', console=True, sd_notify=True)
+    print_line('MQTT message "man_report_cmd" received.', sd_notify=True)
     
     # Defer sending until sensor data has been read
     cfg.settings.man_report = True
-    # To avoid Out-of-Memory exception in SMTP constructor (using SSL) on ESP32,
-    # disconnect MQTT client before sending mail
-#    if sys.implementation.name == "micropython":
-#        client.disconnect()
 
-#    m_report.Report()
-    
-    # Reconnect MQTT client
-#    if sys.implementation.name == "micropython":
-#        mqtt_client.reconnect()
     
 def mqtt_man_irr_cmd(client, userdata, msg):
     """
@@ -373,13 +252,13 @@ def mqtt_man_irr_cmd(client, userdata, msg):
         msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
     """
     val = int(msg.payload)
-    print_line('MQTT message "man_irr_cmd({})" received'.format(val), console=True, sd_notify=True)
+    print_line('MQTT message "man_irr_cmd({})" received'.format(val), sd_notify=True)
     if ((val == 1) or (val == 2)):
         idx = val - 1
         if (m_pump.pumps[idx].busy):
             print_line('Pump #{} already busy ({:s}), ignoring request'
                        .format(val, "manual" if (m_pump.pumps[idx].busy == PUMP_BUSY_MAN) else "auto"),
-                    console=True, sd_notify=True)
+                    sd_notify=True)
             return
 
         client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', str(val), qos = 1)
@@ -405,7 +284,7 @@ def mqtt_man_irr_duration_ctrl(client, userdata, msg):
     cfg.settings.irr_duration_man = int(msg.payload)
 
     print_line('MQTT message "man_irr_duration_ctrl({})" received'.format(cfg.settings.irr_duration_man),
-               console=True, sd_notify=True)
+               sd_notify=True)
     client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', msg.payload)
 
 
@@ -428,7 +307,7 @@ def mqtt_auto_report_ctrl(client, userdata, msg):
     cfg.settings.auto_report = int(msg.payload)
 
     print_line('MQTT message "auto_report_ctrl({})" received'.format(cfg.settings.auto_report),
-               console=True, sd_notify=True)
+               sd_notify=True)
     client.publish(cfg.settings.base_topic_flora + '/auto_report_stat', msg.payload)
 
 
@@ -451,8 +330,9 @@ def mqtt_auto_irr_ctrl(client, userdata, msg):
     cfg.settings.auto_irrigation = int(msg.payload)
 
     print_line('MQTT message "auto_irr_ctrl({})" received'.format(cfg.settings.auto_irrigation),
-               console=True, sd_notify=True)
+               sd_notify=True)
     client.publish(cfg.settings.base_topic_flora + '/auto_irr_stat', msg.payload)
+
 
 def mqtt_sleep_dis_ctrl(client, userdata, msg):
     """
@@ -474,7 +354,7 @@ def mqtt_sleep_dis_ctrl(client, userdata, msg):
     cfg.settings.deep_sleep = not(sleep_disable)
 
     print_line('MQTT message "sleep_dis_ctrl({})" received'.format(sleep_disable),
-               console=True, sd_notify=True)
+               sd_notify=True)
     client.publish(cfg.settings.base_topic_flora + '/sleep_dis_stat', str(1 if sleep_disable else 0))
 
 
@@ -495,7 +375,8 @@ def mqtt_on_message(client, userdata, msg):
     message = json.loads(msg.payload.decode('utf-8'))
 
     if (VERBOSITY > 0):
-        print_line('MQTT message from {}: {}'.format(sensor, message))
+        print_line('MQTT message from {}: {}'.format(sensor, message),
+                   sd_notify=True)
 
     # Discard data if moisture value suddenly drops to zero
     # FIXME: Is this still useful?

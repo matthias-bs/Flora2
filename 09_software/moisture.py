@@ -17,6 +17,7 @@
 #
 # 20210317 Created
 # 20210521 Modified return value in case of invalid data
+# 20210622 Changed to use adc1_cal and 6dB attenuation
 #
 # ToDo:
 # - 
@@ -24,9 +25,10 @@
 ###############################################################################
 
 import sys
-from gpio import *
+import config as cfg
 
 if sys.platform == "esp32":
+    import adc1_cal
     from machine import Pin
     from machine import ADC
 
@@ -41,8 +43,8 @@ class Moisture:
         name (string):  instance name (for debugging)
         _y1 (int):      maximum moisture [%]
         _y2 (int):      minimum moisture [%]
-        _x1 (int):      ADC output for 100% moisture [n]
-        _x2 (int):      ADC output for   0% moisture [n]
+        _x1 (int):      Sensor output for 100% moisture [mV]
+        _x2 (int):      Sensor output for   0% moisture [mV]
         _m  (float):    ADC value to percentage transfer function - slope
         _ul (int):      lower limit for ADC value
         _oh (int):      upper limit for ADC value
@@ -69,11 +71,10 @@ class Moisture:
         self.raw    = 0
         
         if sys.implementation.name == "micropython" and sys.platform == "esp32":
-            # create ADC object on GPIO pin
-            self._adc = ADC(Pin(self._pin, Pin.IN))
-            
-            # set 11dB input attenuation (voltage range roughly 0.0v - 3.6v)
-            self._adc.atten(ADC.ATTN_11DB)
+            self._adc = adc1_cal.ADC1Cal(Pin(self._pin), cfg.MOIST_DIV)
+                        
+            # set 6dB input attenuation ("suggested voltage range": 150 - 1750mV)
+            self._adc.atten(ADC.ATTN_6DB)
             
             # set 9 bit return values (returned range 0-511)
             self._adc.width(ADC.WIDTH_9BIT)   
@@ -89,10 +90,10 @@ class Moisture:
             bool, int: valid flag, moisture [%]
         """
         if sys.platform == "esp32":
-            raw_val = self._adc.read()
+            raw_val = self._adc.voltage
             self.raw = raw_val
             valid = True if (raw_val >= self._ul and raw_val <= self._oh) else False
-            moisture = int(self._m * (self._adc.read() - self._x1) + self._y1)
+            moisture = int(self._m * (raw_val - self._x1) + self._y1)
             moisture = moisture if valid else raw_val
             return (valid, moisture)
         else:
