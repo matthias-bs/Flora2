@@ -1,0 +1,10 @@
+-rw-r--r-- 1 mp mp 1106 Mai 21 20:12 adc1_cal.mpy
+-rw-r--r-- 1 mp mp 1880 Mai 21 20:12 alert.mpy
+-rw-r--r-- 1 mp mp 4495 Mai 21 20:12 bme280.mpy
+-rw-r--r-- 1 mp mp 1758 Mai 21 20:12 ConfigParser.mpy
+-rw-r--r-- 1 mp mp 2170 Mai 21 20:12 flora_email.mpy
+-rw-r--r-- 1 mp mp 1189 Mai 21 20:12 irrigation.mpy
+-rw-r--r-- 1 mp mp 4108 Mai 21 20:12 miflora.mpy
+-rw-r--r-- 1 mp mp 4403 Mai 21 20:12 report.mpy
+-rw-r--r-- 1 mp mp 1631 Mai 21 20:12 sensor.mpy
+-rw-r--r-- 1 mp mp 1917 Mai 21 20:12 umail.mpy
