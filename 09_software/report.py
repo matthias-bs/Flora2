@@ -40,7 +40,7 @@ import config as m_config
 import pump as m_pump
 import sensor as m_sensor
 import tank as m_tank
-from time import time, localtime
+from time import localtime
 
 
 ###############################################################################
@@ -93,7 +93,7 @@ class Report:
 
     def sensor_settings(self):
         """
-        Add sensor (and plant) settings
+        Add sensor (and plant) settings / status to report.
         """
         for sensor in m_sensor.sensors:
             s = m_sensor.sensors[sensor]
@@ -155,7 +155,7 @@ class Report:
 
     def system_settings(self):
         """
-        Add system settings (HTML table) to report.
+        Add system settings to report.
         """
         self.data['irrigation'] = {}
         self.data['irrigation']['auto_enabled'] = m_config.settings.auto_irrigation
