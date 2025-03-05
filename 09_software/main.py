@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 ###############################################################################
 # main.py
 # Plant monitoring and irrigation system using Raspberry Pi / Espressif ESP32
@@ -110,10 +108,12 @@
 # 20210711 Fixed sending of MQTT status messages and handling of 
 #          boolean fallback values
 #          Fixed auto irrigation
-# 20240709 Updated include statements for MicroPython v1.23.0 compatibility 
+# 20240709 Updated include statements for MicroPython v1.23.0 compatibility
 #          Prevent sleep mode if battery voltage input is disconnected
 # 20250305 Removed alert, replaced report email by MQTT message
-#          modified string formatting, code improvements
+#          Modified string formatting, code improvements
+#          Removed conditional code execution with support of non-micropython
+#          platforms
 #
 # ToDo:
 # 
@@ -127,7 +127,6 @@
 #
 ###############################################################################
 
-
 import sys
 import os
 import json
@@ -136,24 +135,17 @@ import time
 from time import sleep
 from ntptime import settime
 
-if sys.implementation.name == "micropython":
-    import wifi
-    import miflora
-    from miflora import Mi_Flora
-    import machine
-    import ntptime
-    import uerrno
-    from bluetooth import BLE
-    from machine import reset
-    if sys.platform == "esp32":
-        import adc1_cal
-else:
-    import struct
-    import argparse
-    import os.path
-    import locale
-    from colorama import init as colorama_init
-    from colorama import Fore, Back, Style
+
+import wifi
+import miflora
+from miflora import Mi_Flora
+import machine
+import ntptime
+import uerrno
+from bluetooth import BLE
+from machine import reset
+if sys.platform == "esp32":
+    import adc1_cal
 
 # Flora specific modules
 import config as cfg
@@ -199,7 +191,7 @@ def main():
     except OSError as e:
         wifi.deinit()
         machine.reset()
-        
+
     # Set time to Central European Time (CET) including daylight saving 
     tm = cettime()
 
@@ -212,52 +204,29 @@ def main():
     gcollect()
     if MEMINFO:
         meminfo('__main__ gc')
-    
-    if sys.implementation.name != "micropython":
-        locale.setlocale(locale.LC_ALL, 'de_DE.UTF8')
 
-        # Argparse
-        # https://pymotw.com/3/configparser/
-        # https://stackoverflow.com/questions/22068050/iterate-over-sections-in-a-config-file
-        parser = argparse.ArgumentParser(description=cfg.PROJECT_NAME)
-        parser.add_argument('--config_dir',
-                            help='set directory where config.ini is located',
-                            default=sys.path[0])
-        parse_args = parser.parse_args()
-        config_dir = parse_args.config_dir
-    else:
-        config_dir = './'
-    
+    config_dir = './'
+
     # Intro
-    if sys.implementation.name != "micropython":
-        locale.setlocale(locale.LC_ALL, 'de_DE.UTF8')
-        colorama_init()
-        print(Fore.GREEN + Style.BRIGHT)
-        print(cfg.PROJECT_NAME)
-        print(cfg.PROJECT_VERSION)
-        print(cfg.PROJECT_BUILD)
-        print('Source:', cfg.PROJECT_URL)
-        print(Style.RESET_ALL)
-    else:
-        print(cfg.PROJECT_NAME)
-        print(cfg.PROJECT_VERSION)
-        print(cfg.PROJECT_BUILD)
-        print('Source:', cfg.PROJECT_URL)        
+    print(cfg.PROJECT_NAME)
+    print(cfg.PROJECT_VERSION)
+    print(cfg.PROJECT_BUILD)
+    print('Source:', cfg.PROJECT_URL)
 
     # Initialize settings
     cfg.settings = cfg.Settings(config_dir, delimiters=('=', ), inline_comment_prefixes=('#'))
-    
+
     if cfg.settings.battery_voltage:
         ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
         ubatt.atten(machine.ADC.ATTN_6DB)
         print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
-        
+
         # First energy saving level: switch to processing_period2
         if (ubatt.voltage < cfg.settings.battery_weak):
             sleep_duration = cfg.settings.processing_period2
         else:
             sleep_duration = cfg.settings.processing_period
-        
+
         # Second energy saving level: immediately go to sleep
         if (ubatt.voltage < cfg.settings.battery_low) and (ubatt.voltage > 1000):
             del ubatt    
@@ -268,7 +237,7 @@ def main():
             while True:
                  # Thou shall not pass!
                  pass
-      
+
 #    if MEMINFO:
 #    meminfo('Settings')
 
@@ -277,7 +246,7 @@ def main():
 
     # Sensor power control object
     sensor_power = m_sensor_power.SensorPower(cfg.GPIO_SENSOR_POWER)
-    
+
     # Tank object (fill level sensors)
     m_tank.tank = m_tank.Tank(cfg.GPIO_TANK_SENS_LOW, cfg.GPIO_TANK_SENS_EMPTY)
 
@@ -298,7 +267,7 @@ def main():
     # Create a dictionary of Sensor objects
     s.sensors = {}
     gcollect()
-    
+
     for sensor in sensor_list:
         s.sensors[sensor] = s.Sensor(sensor, cfg.settings.mqtt_msg_timeout, cfg.settings.sensor_batt_low)
         # check if config file contains a section for this sensor
@@ -317,44 +286,41 @@ def main():
     for sensor in s.sensors:
         if s.config_error(sensor):
             sys.exit(1)
-        
+
         s.sensors[sensor].init_plant()
-        
-        if (cfg.settings.sensor_interface == 'ble'):            
+
+        if (cfg.settings.sensor_interface == 'ble'):
             addr = cfg.settings.cp.get(sensor, 'address')
             addr = addr.replace(':', '')
             addr = binascii.unhexlify(addr)
             s.sensors[sensor].address = bytes(addr, "utf-8")
 
-        # Remove section from memory allocated by ConfigParser 
+        # Remove section from memory allocated by ConfigParser
         cfg.settings.cp.remove_section(sensor)
     del cfg.settings.cp
     gcollect()
-    
+
     # Local (analog) moisture sensor interface
     if (cfg.settings.sensor_interface == 'local'):
         if (len(sensor_list) > len(cfg.MOISTURE_ADC_PINS)):
             print_line('Configured number sensors exceeds number of analog inputs (MOISTURE_ADC_PINS) in config.py',
                     error=True, sd_notify=True)
             sys.exit(1)
-            
+
         moisture = {}
         for i, sensor in enumerate(sensor_list):
             moisture[sensor] = m_moisture.Moisture(cfg.MOISTURE_ADC_PINS[i], cfg.MOISTURE_MIN_VAL, cfg.MOISTURE_MAX_VAL)
-            
+
     gcollect()
-    
+
     # Init MQTT client
-#    if sys.implementation.name == "micropython":
     m_mqtt.MQTTClient.DEBUG = True
     m_mqtt.MQTTClient.MSG_QUEUE_MAX = 1
     m_mqtt.mqtt_umqtt_init()
-#    else:
-#        m_mqtt.mqtt_paho_init(cfg.settings, s.sensors)
 
     # Mark2 MQTT init done
     #pin_mark.value(1)
-    
+
     m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
                                qos=1, retain=True)
 
@@ -363,32 +329,21 @@ def main():
 
     # Initialize irrigation
     irrigation = m_irrigation.Irrigation()
-    
-    if sys.implementation.name != "micropython":
-        # Start MQTT network handler loop
-        # (for MicroPython, the MQTT network handler loop
-        #  will be called in main ececution loop)
-        m_mqtt.mqtt_client.loop_start()
-
-        # Notify syslogd that we are up and running
-        sd_notifier.notify('READY=1')
-
 
     if (cfg.settings.sensor_interface == 'mqtt'):
         # Wait until MQTT data is valid (this may take a while...)
         print_line('Waiting for MQTT sensor data -->', sd_notify=True)
-        
+
         for sensor in s.sensors:
             while (not(s.sensors[sensor].valid)):
-                if sys.implementation.name == "micropython":
-                    m_mqtt.mqtt_client.check_msg()
-                    m_mqtt.mqtt_client.ping()
+                m_mqtt.mqtt_client.check_msg()
+                m_mqtt.mqtt_client.ping()
                 sleep(1)
             if (VERBOSITY > 1):
                 print_line(sensor + ' ready!', sd_notify=True)
 
         print_line('<-- Initial reception of MQTT sensor data succeeded.', sd_notify=True)
-    
+
     meminfo('Start Main Loop')
 
     if (VERBOSITY > 0):     
@@ -402,35 +357,35 @@ def main():
         # pin_mark.value(0)
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
                                    qos=1, retain=True)
-        if sys.implementation.name == "micropython":
-            gcollect()
-            # BEGIN FIXME
-            # Note: Something is quite different/wrong with SSL sockets. For now,
-            #       we just cross fingers that our connection is good...
-            # At this point in the code you must consider how to handle
-            # connection errors.  And how often to resume the connection.
-            if cfg.settings.mqtt_tls == False and m_mqtt.mqtt_client.is_conn_issue():
-                if m_mqtt.mqtt_client.is_conn_issue():
-                    # If the connection is successful, the is_conn_issue
-                    # method will not return a connection error.
-                    m_mqtt.mqtt_client.reconnect()
-                else:
-                    m_mqtt.mqtt_client.resubscribe()
-            m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
-                                       qos=1, retain=True)
- 
-            for _ in range(cfg.MQTT_MAX_CYCLES):
-                # While Eclipse Paho maintains a network handler loop,
-                # uMQTT network services have to be handled manually
-                m_mqtt.mqtt_client.check_msg()
-                m_mqtt.mqtt_client.send_queue()
-                time.sleep_ms(500)
-            # END FIXME
+        gcollect()
+
+        # BEGIN FIXME
+        # Note: Something is quite different/wrong with SSL sockets. For now,
+        #       we just cross fingers that our connection is good...
+        # At this point in the code you must consider how to handle
+        # connection errors.  And how often to resume the connection.
+        if cfg.settings.mqtt_tls == False and m_mqtt.mqtt_client.is_conn_issue():
+            if m_mqtt.mqtt_client.is_conn_issue():
+                # If the connection is successful, the is_conn_issue
+                # method will not return a connection error.
+                m_mqtt.mqtt_client.reconnect()
+            else:
+                m_mqtt.mqtt_client.resubscribe()
+        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
+                                    qos=1, retain=True)
+
+        for _ in range(cfg.MQTT_MAX_CYCLES):
+            # While Eclipse Paho maintains a network handler loop,
+            # uMQTT network services have to be handled manually
+            m_mqtt.mqtt_client.check_msg()
+            m_mqtt.mqtt_client.send_queue()
+            time.sleep_ms(500)
+        # END FIXME
 
         if (sys.platform == "esp32"):
             sensor_power.enable(True)
             sleep(1)
-        
+
         if (cfg.settings.sensor_interface == 'local'):
             for sensor in sensor_list:
                 valid, moist_val = moisture[sensor].moisture
@@ -445,7 +400,7 @@ def main():
                 else:
                     print_line(f'Moisture sensor "{sensor}" value={moist_val} - out of range. Check connection and power settings.',
                                error=True, sd_notify=True)
-        
+
         # Mark4 BLE start
         # pin_mark.value(1)
         if (cfg.settings.sensor_interface == 'ble'):
@@ -459,10 +414,10 @@ def main():
                 for sensor in s.sensors:
                     addr = s.sensors[sensor].address
                     print_line(f'Connecting to MiFlora sensor {binascii.hexlify(addr)}', sd_notify=True)
-                    
+
                     for _ in range(cfg.BLE_MAX_RETRIES):
                         miflora_ble.gap_connect(miflora.ADDR_TYPE_PUBLIC, addr)
-                        
+
                         if miflora_ble.wait_for(miflora.S_READ_SENSOR_DONE, cfg.BLE_TIMEOUT):
                             print_line(f"Battery Level: {miflora_ble.battery}%")
                             #print(f"Version: {miflora_ble.version}")
@@ -474,7 +429,7 @@ def main():
                             break
                         else:
                             print_line("Reading MiFlora failed!")
-                    
+
                     miflora_ble.disconnect()
                     if miflora_ble.wait_for_connection(False, cfg.BLE_TIMEOUT):
                         print_line("MiFlora disconnected.")
@@ -484,10 +439,10 @@ def main():
                 del miflora_ble
             del ble
             gcollect()
-            
+
         # Mark5 BLE end
         #pin_mark.value(0)
-        
+
         # FIXME
         if cfg.settings.temperature_sensor:
             temperature = m_temperature.Temperature(cfg.GPIO_TEMP_SENS)
@@ -498,7 +453,7 @@ def main():
                     for sensor in s.sensors:
                         s.sensors[sensor].update_temperature_sensor(temp)
                 print_line(f"DS1820 - Temperature: {temp}°C")
-                m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/temperature', 
+                m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/temperature',
                                          f'{temp:2.1f}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
             del temperature
             gcollect()
@@ -517,10 +472,10 @@ def main():
             print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/ubatt', 
                                      f'{ubatt.voltage}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
-        
+
         gcollect()
         meminfo('Report')
-            
+
         # Send system settings & status via MQTT
         report = m_report.Report()
         system = report.gen_report()
@@ -539,25 +494,24 @@ def main():
                                    qos = 1, retain=True)
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/sleep_dis_stat', '0' if cfg.settings.deep_sleep else '1', 
                                    qos = 1, retain=True)
-       
+
         # Execute manual irrigation (if requested)
         irrigation.man_irrigation()
-        
+
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', '0', qos = 1)
 
         # Execute automatic irrigation
         if (cfg.settings.auto_irrigation):
             cfg.settings.irr_scheduled = irrigation.auto_irrigation()
-        
+
         gcollect()
 
-        if sys.implementation.name == "micropython":
-            for _ in range(cfg.MQTT_MAX_CYCLES):
-                # While Eclipse Paho maintains a network handler loop,
-                # uMQTT network services have to be handles manually
-                m_mqtt.mqtt_client.check_msg()
-                m_mqtt.mqtt_client.send_queue()
-                time.sleep_ms(500)
+        for _ in range(cfg.MQTT_MAX_CYCLES):
+            # While Eclipse Paho maintains a network handler loop,
+            # uMQTT network services have to be handles manually
+            m_mqtt.mqtt_client.check_msg()
+            m_mqtt.mqtt_client.send_queue()
+            time.sleep_ms(500)
 
         if (VERBOSITY > 1):
             for sensor in s.sensors:
@@ -601,7 +555,7 @@ def main():
                     while True:
                         # Thou shall not pass!
                         pass
-                
+
             if (VERBOSITY > 0):
                 print_line(f'Standby ({cfg.settings.processing_period} seconds) ...')
 
@@ -616,16 +570,15 @@ def main():
                 # message callback function
                 if (m_pump.pumps[0].busy or m_pump.pumps[1].busy):
                     break
-                
-                if sys.implementation.name == "micropython":
-                    # While Eclipse Paho maintains a network handler loop,
-                    # uMQTT network services have to be handles manually
-                    m_mqtt.mqtt_client.check_msg()
-                    if (count == cfg.settings.mqtt_keepalive):
-                        count = 0
-                        m_mqtt.mqtt_client.ping()
-                    else:
-                        count += 1
+
+                # While Eclipse Paho maintains a network handler loop,
+                # uMQTT network services have to be handles manually
+                m_mqtt.mqtt_client.check_msg()
+                if (count == cfg.settings.mqtt_keepalive):
+                    count = 0
+                    m_mqtt.mqtt_client.ping()
+                else:
+                    count += 1
                 sleep(1)
         else:
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "offline",
@@ -634,7 +587,7 @@ def main():
             print_line('Finished in non-daemon-mode', sd_notify=True)
             m_mqtt.mqtt_client.disconnect()
             break
-  
+
 
 ###############################################################################
 # Init
@@ -671,4 +624,3 @@ if __name__ == '__main__':
         meminfo('__main__')
     
     main()
-    
