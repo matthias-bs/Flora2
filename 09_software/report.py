@@ -34,13 +34,8 @@
 #
 ###############################################################################
 
-import sys
 import json
 
-if sys.implementation.name != "micropython":
-    from time import strftime
-
-from garbage_collect import gcollect, meminfo
 import config as m_config
 import pump as m_pump
 import sensor as m_sensor
@@ -90,15 +85,11 @@ class Report:
             dt (date-time tuple): (year, month, mday, hour, minute, second, weekday, yearday)
             
         Returns:
-            string: date/time considering locale (Python) or fixed format dd.mm.yy hh:mm (MicroPython)
+            string: fixed format dd.mm.yy hh:mm
         """
-        if sys.implementation.name != "micropython":
-            # neatly print time and date using locale settings
-            return strftime("%x %X")
-        else:
-            # lean approach with restrictions from MicroPython's utime: dd.mm.yy hh:mm
-            # date-time = (year, month, mday, hour, minute, second, weekday, yearday)
-            return '{:02d}.{:02d}.{} {:02d}:{:02d}'.format(dt[2], dt[1], dt[0], dt[3], dt[4])
+        # lean approach with restrictions from MicroPython's utime: dd.mm.yy hh:mm
+        # date-time = (year, month, mday, hour, minute, second, weekday, yearday)
+        return f'{dt[2]:02d}.{dt[1]:02d}.{dt[0]:02d} {dt[3]:02d}:{dt[4]:02d}'
 
     def sensor_settings(self):
         """
