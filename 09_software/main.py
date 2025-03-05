@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ###############################################################################
-# flora.py
+# main.py
 # Plant monitoring and irrigation system using Raspberry Pi / Espressif ESP32
 #
 # - based on data provided by Mi Flora Plant Sensor MQTT Client/Daemon
@@ -112,11 +112,12 @@
 #          Fixed auto irrigation
 # 20240709 Updated include statements for MicroPython v1.23.0 compatibility 
 #          Prevent sleep mode if battery voltage input is disconnected
+# 20250305 Removed alert, replaced report email by MQTT message
+#          modified string formatting, code improvements
 #
 # ToDo:
 # 
 # - fix MQTT over TLS
-# - fix email reporting (lack of memory)
 # - add daily min/max of sensor values
 # - compare light value against daily average
 #
@@ -141,7 +142,7 @@ if sys.implementation.name == "micropython":
     from miflora import Mi_Flora
     import machine
     import ntptime
-    import errno
+    import uerrno
     from bluetooth import BLE
     from machine import reset
     if sys.platform == "esp32":
@@ -155,7 +156,6 @@ else:
     from colorama import Fore, Back, Style
 
 # Flora specific modules
-import alert as m_alert
 import config as cfg
 from config import DEBUG, MEMINFO, VERBOSITY
 import flora_mqtt as m_mqtt
@@ -172,65 +172,6 @@ import tank as m_tank
 import temperature as m_temperature
 import weather as m_weather
 
-
-def save_state(alerts):
-    """
-    Save state of alerts to Low Power RAM (RTC RAM) which will retain its contents during deep sleep mode
-
-    Parameters:
-        alerts (Alert):     list of instances of Alert class
-    """
-    if sys.platform != "esp32":
-        return
-    state = []
-    for a in alerts:
-        state.append(a.state)
-    for idx in s.sensors:
-        state.append(s.sensors[idx].state)
-    state.append(m_pump.pumps[0].state)
-    state.append(m_pump.pumps[1].state)
-    state.append(cfg.settings.auto_irrigation)
-    state.append(cfg.settings.auto_report)
-    state.append(cfg.settings.irr_duration_man)
-    state.append(cfg.settings.deep_sleep)
-    state_json = json.dumps(state)
-    if VERBOSITY > 0:
-        print_line('save_state(): size = {}'.format(len(state_json)))
-    rtc = machine.RTC()
-    rtc.memory(state_json)
-    
-
-def load_state(alerts):
-    """
-    Load state of alerts from Low Power RAM (RTC RAM) which will retain its contents during deep sleep mode
-
-    Parameters:
-        alerts (Alert):     list of instances of Alert class
-    """    
-    if (sys.platform != "esp32"):
-        return
-    rtc = machine.RTC()
-    state_json = rtc.memory()
-    state = json.loads(state_json)
-    for i, a in enumerate(alerts):
-        a.state = state[i]
-    i += 1
-    for idx in s.sensors:
-        s.sensors[idx].state = state[i]
-        i += 1
-    m_pump.pumps[0].state = state[i]
-    i += 1
-    m_pump.pumps[1].state = state[i]
-    i += 1
-    cfg.settings.auto_irrigation = state[i]
-    i += 1
-    cfg.settings.auto_report = state[i]
-    i += 1
-    cfg.settings.irr_duration_man = state[i]
-    i += 1
-    cfg.settings.deep_sleep = state[i]
-    
-    
 # Micropython esp8266/esp32
 # This code returns the Central European Time (CET) including daylight saving
 # Winter (CET) is UTC+1H Summer (CEST) is UTC+2H
@@ -266,7 +207,7 @@ def main():
     machine.RTC().datetime((tm[0], tm[1], tm[2], tm[6] + 1, tm[3], tm[4], tm[5], 0))
 
     # Print system time
-    print_line('NTP Time: {}/{:02}/{:02} {:02}:{:02}:{:02}'.format(tm[0], tm[1], tm[2], tm[3], tm[4], tm[5]))
+    print_line(f'NTP Time: {tm[0]}/{tm[1]:02}/{tm[2]:02} {tm[3]:02}:{tm[4]:02}:{tm[5]:02}')
 
     gcollect()
     if MEMINFO:
@@ -309,7 +250,7 @@ def main():
     if cfg.settings.battery_voltage:
         ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
         ubatt.atten(machine.ADC.ATTN_6DB)
-        print_line('Battery Voltage: {:4}mV'.format(ubatt.voltage))
+        print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
         
         # First energy saving level: switch to processing_period2
         if (ubatt.voltage < cfg.settings.battery_weak):
@@ -362,8 +303,8 @@ def main():
         s.sensors[sensor] = s.Sensor(sensor, cfg.settings.mqtt_msg_timeout, cfg.settings.sensor_batt_low)
         # check if config file contains a section for this sensor
         if (not(cfg.settings.cp.has_section(sensor))):
-            print_line('The configuration file "config.ini" has a sensor named {} in the [Sensors] section,'
-                    .format(sensor), error=True, sd_notify=True)
+            print_line(f'The configuration file "config.ini" has a sensor named {sensor} in the [Sensors] section,',
+                       error=True, sd_notify=True)
             print_line('but no plant data has been provided in a section named accordingly.',
                     error=True, sd_notify=True)
             sys.exit(1)
@@ -447,39 +388,6 @@ def main():
                 print_line(sensor + ' ready!', sd_notify=True)
 
         print_line('<-- Initial reception of MQTT sensor data succeeded.', sd_notify=True)
-
-    # Init sensor value alerts
-    alerts = []
-    alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_w_moisture, 'sensors', s.sensors, 'moist_ul', 'moist_oh', "Moisture_Warning"))
-    alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_i_moisture, 'sensors', s.sensors, 'moist_ll', 'moist_hl', "Moisture_Info"))
-    
-    if (cfg.settings.sensor_interface == 'mqtt'):
-        alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_w_battery, 'sensors', s.sensors, 'batt_ul', NONE, "Battery"))
-    
-    if (cfg.settings.sensor_interface == 'mqtt' or cfg.settings.temperature_sensor):
-        alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_w_temperature, 'sensors', s.sensors, 'temp_ul', 'temp_oh', "Temperature"))
-    
-    if (cfg.settings.sensor_interface != 'local'):
-        alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_w_conductivity, 'sensors', s.sensors, 'cond_ul', 'cond_oh', "Conductivity"))
-        alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_w_light, 'sensors', s.sensors, 'light_ul', 'light_oh',      "Light"))
-    
-    # Init system alerts
-    if (cfg.settings.sensor_interface == 'mqtt'):
-        alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_e_sensor, 'sensors', s.sensors, 'timeout', "Sensor"))
-    
-#    alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_e_pump, 'system', m_pump.pumps[0], 'error', "Pump1"))
-#    alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_e_pump, 'system', m_pump.pumps[1], 'error', "Pump2"))
-    alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_e_tank_low, 'system', m_tank.tank, 'low', "Tank Low"))
-    alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_e_tank_empty, 'system', m_tank.tank, 'empty', "Tank Empty"))
-        
-#    if MEMINFO:
-#         meminfo('Alerts')
-        
-    gcollect()
-    if (sys.platform == "esp32") and (machine.reset_cause() == machine.DEEPSLEEP_RESET):
-        load_state(alerts)
-    
-    gcollect()
     
     meminfo('Start Main Loop')
 
@@ -491,7 +399,7 @@ def main():
     ###############################################################################
     while (True):
         # Mark3 Main Loop
-        #pin_mark.value(0)
+        # pin_mark.value(0)
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
                                    qos=1, retain=True)
         if sys.implementation.name == "micropython":
@@ -517,8 +425,8 @@ def main():
                 m_mqtt.mqtt_client.check_msg()
                 m_mqtt.mqtt_client.send_queue()
                 time.sleep_ms(500)
+            # END FIXME
 
-           # END FIXME
         if (sys.platform == "esp32"):
             sensor_power.enable(True)
             sleep(1)
@@ -533,35 +441,33 @@ def main():
                     json_data = json.dumps(data)
                     m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/' + sensor, json_data,
                                                qos = 1, retain=cfg.MQTT_DATA_RETAIN)
-                    print_line("{} - Moisture: {}%".format(sensor, moist_val))
+                    print_line(f"{sensor} - Moisture: {moist_val}%")
                 else:
-                    print_line('Moisture sensor "{}" value={} - out of range. Check connection and power settings.'
-                               .format(sensor, moist_val),
+                    print_line(f'Moisture sensor "{sensor}" value={moist_val} - out of range. Check connection and power settings.',
                                error=True, sd_notify=True)
         
         # Mark4 BLE start
-        #pin_mark.value(1)
+        # pin_mark.value(1)
         if (cfg.settings.sensor_interface == 'ble'):
             try:
                 ble = BLE()
                 miflora_ble = Mi_Flora(ble)
             except OSError as exc:
-                print_line('Bluetooth LE exception: {}'.format(uerrno.errorcode[exc.errno]), error=True, sd_notify=True)
+                print_line(f'Bluetooth LE exception: {uerrno.errorcode[exc.errno]}', error=True, sd_notify=True)
                 print_line('Cannot access MiFlora sensor(s).')
             else:
                 for sensor in s.sensors:
                     addr = s.sensors[sensor].address
-                    print_line('Connecting to MiFlora sensor {}'.format(binascii.hexlify(addr)), sd_notify=True)
+                    print_line(f'Connecting to MiFlora sensor {binascii.hexlify(addr)}', sd_notify=True)
                     
                     for _ in range(cfg.BLE_MAX_RETRIES):
                         miflora_ble.gap_connect(miflora.ADDR_TYPE_PUBLIC, addr)
                         
                         if miflora_ble.wait_for(miflora.S_READ_SENSOR_DONE, cfg.BLE_TIMEOUT):
-                            print_line("Battery Level: {}%".format(miflora_ble.battery))
-                            #print("Version: {}".format(miflora_ble.version))
-                            print_line("Temperature: {}°C Light: {}lx Moisture: {}% Conductivity: {}µS/cm".format(
-                                miflora_ble.temp, miflora_ble.light, miflora_ble.moist, miflora_ble.cond)
-                            )
+                            print_line(f"Battery Level: {miflora_ble.battery}%")
+                            #print(f"Version: {miflora_ble.version}")
+                            print_line(f"Temperature: {miflora_ble.temp}°C Light: {miflora_ble.light}lx " + \
+                                       f"Moisture: {miflora_ble.moist}% Conductivity: {miflora_ble.cond}µS/cm")
                             s.sensors[sensor].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
                             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/' + sensor, s.sensors[sensor].data,
                                                     qos = 1, retain=cfg.MQTT_DATA_RETAIN)
@@ -591,9 +497,9 @@ def main():
                 if (cfg.settings.sensor_interface == 'local'):
                     for sensor in s.sensors:
                         s.sensors[sensor].update_temperature_sensor(temp)
-                print_line("DS1820 - Temperature: {}°C".format(temp))
+                print_line(f"DS1820 - Temperature: {temp}°C")
                 m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/temperature', 
-                                         '{:2.1f}'.format(temp), qos = 1, retain=cfg.MQTT_DATA_RETAIN)
+                                         f'{temp:2.1f}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
             del temperature
             gcollect()
         
@@ -608,13 +514,9 @@ def main():
         if cfg.settings.battery_voltage:
             ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
             ubatt.atten(machine.ADC.ATTN_6DB)
-            print_line('Battery Voltage: {:4}mV'.format(ubatt.voltage))
+            print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/ubatt', 
-                                     '{}'.format(ubatt.voltage), qos = 1, retain=cfg.MQTT_DATA_RETAIN)
-
-        #alert = False
-        #for a in alerts:
-        #    alert |= a.check()
+                                     f'{ubatt.voltage}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
         
         gcollect()
         meminfo('Report')
@@ -659,13 +561,9 @@ def main():
 
         if (VERBOSITY > 1):
             for sensor in s.sensors:
-                print_line("{:16s} Moisture: {:3d} % Temperature: {:2.1f} °C Conductivity: {:4d} uS/cm Light: {:6d} lx Battery: {:3d} %"
-                        .format(sensor,
-                        s.sensors[sensor].moist,
-                        s.sensors[sensor].temp,
-                        s.sensors[sensor].cond,
-                        s.sensors[sensor].light,
-                        s.sensors[sensor].batt))
+                print_line(f"{sensor:16s} Moisture: {s.sensors[sensor].moist:3d} % Temperature: {s.sensors[sensor].temp:2.1f} " +\
+                           f"°C Conductivity: {s.sensors[sensor].cond:4d} uS/cm Light: {s.sensors[sensor].light:6d} " + \
+                           f"lx Battery: {s.sensors[sensor].batt:3d} %")
 
         if (cfg.settings.daemon_enabled):
             if (sys.platform == "esp32"):
@@ -675,8 +573,7 @@ def main():
                 # to simplify debugging/flashing 
                 if (cfg.settings.deep_sleep and ubatt.voltage > 1000):
                     save_state(alerts)
-                    print_line('Entering deep sleep in 5 seconds, will wake up after {} seconds ...'
-                            .format(cfg.settings.processing_period))
+                    print_line(f'Entering deep sleep in 5 seconds, will wake up after {cfg.settings.processing_period} seconds ...')
                     m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "offline",
                                             qos = 1, retain=True)
                     sleep(2)
@@ -706,7 +603,7 @@ def main():
                         pass
                 
             if (VERBOSITY > 0):
-                print_line('Standby ({} seconds) ...'.format(cfg.settings.processing_period))
+                print_line(f'Standby ({cfg.settings.processing_period} seconds) ...')
 
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "idle",
                                        qos = 1, retain=True)
@@ -753,9 +650,9 @@ if __name__ == '__main__':
 
     if wifi.connectWiFi(wifi.station):
         print_line("WiFi connection ready!", error=True)
-        print_line('Network config: {}'.format(wifi.station.ifconfig()))
+        print_line(f'Network config: {wifi.station.ifconfig()}')
     else:
-        print_line("Cannot connect to WiFi! Rebooting in {} seconds.".format(cfg.WLAN_RETRY_DELAY))
+        print_line(f"Cannot connect to WiFi! Rebooting in {cfg.WLAN_RETRY_DELAY} seconds.")
         sleep(cfg.WLAN_RETRY_DELAY)
         reset()
     
@@ -766,7 +663,7 @@ if __name__ == '__main__':
         meminfo('Boot finished')
 
     gc.enable()
-    #print("gc.mem_free(): {}; gc.mem_alloc(): {}".format(gc.mem_free(), gc.mem_alloc()))
+    #print(f"gc.mem_free(): {gc.mem_free()}; gc.mem_alloc(): {gc.mem_alloc()}")
     #gc.mem_free(): 23344; gc.mem_alloc(): 87824
     gc.threshold(gc.mem_free() // 2 + gc.mem_alloc())
 
