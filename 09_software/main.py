@@ -327,7 +327,6 @@ def main():
             while True:
                  # Thou shall not pass!
                  pass
-        del ubatt
       
 #    if MEMINFO:
 #    meminfo('Settings')
@@ -460,7 +459,7 @@ def main():
     if (cfg.settings.sensor_interface == 'mqtt' or cfg.settings.temperature_sensor):
         alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_w_temperature, 'sensors', s.sensors, 'temp_ul', 'temp_oh', "Temperature"))
     
-    if (not(cfg.settings.sensor_interface == 'local')):
+    if (cfg.settings.sensor_interface != 'local'):
         alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_w_conductivity, 'sensors', s.sensors, 'cond_ul', 'cond_oh', "Conductivity"))
         alerts.append(m_alert.Alert(cfg.settings, cfg.settings.alerts_w_light, 'sensors', s.sensors, 'light_ul', 'light_oh',      "Light"))
     
@@ -512,9 +511,9 @@ def main():
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
                                        qos=1, retain=True)
  
-            for loop in range(cfg.MQTT_MAX_CYCLES):
+            for _ in range(cfg.MQTT_MAX_CYCLES):
                 # While Eclipse Paho maintains a network handler loop,
-                # uMQTT network services have to be handles manually
+                # uMQTT network services have to be handled manually
                 m_mqtt.mqtt_client.check_msg()
                 m_mqtt.mqtt_client.send_queue()
                 time.sleep_ms(500)
@@ -554,7 +553,7 @@ def main():
                     addr = s.sensors[sensor].address
                     print_line('Connecting to MiFlora sensor {}'.format(binascii.hexlify(addr)), sd_notify=True)
                     
-                    for retries in range(cfg.BLE_MAX_RETRIES):
+                    for _ in range(cfg.BLE_MAX_RETRIES):
                         miflora_ble.gap_connect(miflora.ADDR_TYPE_PUBLIC, addr)
                         
                         if miflora_ble.wait_for(miflora.S_READ_SENSOR_DONE, cfg.BLE_TIMEOUT):
@@ -612,41 +611,20 @@ def main():
             print_line('Battery Voltage: {:4}mV'.format(ubatt.voltage))
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/ubatt', 
                                      '{}'.format(ubatt.voltage), qos = 1, retain=cfg.MQTT_DATA_RETAIN)
-            del ubatt
 
-        alert = False
-        for a in alerts:
-            alert |= a.check()
+        #alert = False
+        #for a in alerts:
+        #    alert |= a.check()
         
         gcollect()
-        
-        # Execute automatic sending of mail reports
-        if ((cfg.settings.auto_report and alert) or cfg.settings.man_report):
-            if (alert):
-                print_line('Alert triggered.', sd_notify=True)
-                
-            # To avoid Out-of-Memory exception in SMTP constructor (using SSL) on ESP32,
-            # disconnect MQTT client before sending mail
-            if sys.implementation.name == "micropython":
-                if MEMINFO:
-                    meminfo('Pre MQTTClient disconnect')
-                m_mqtt.mqtt_client.disconnect()
-                if MEMINFO:
-                    meminfo('MQTTClient disconnect')
-                gcollect()
-                if MEMINFO:
-                    meminfo('MQTTClient disconnct gc')
+        meminfo('Report')
             
-            meminfo('Report')
-            
-            # Send report as mail
-            m_report.Report()
-            cfg.settings.man_report = False
-            
-            # Reconnect MQTT client
-            if sys.implementation.name == "micropython":
-                #gcollect()
-                m_mqtt.mqtt_client.reconnect()
+        # Send system settings & status via MQTT
+        report = m_report.Report()
+        system = report.gen_report()
+        del report
+
+        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/system', system, qos = 1, retain=True)
 
         # Publish status flags/values
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/auto_report_stat', '1' if cfg.settings.auto_report else '0',
@@ -672,7 +650,7 @@ def main():
         gcollect()
 
         if sys.implementation.name == "micropython":
-            for loop in range(cfg.MQTT_MAX_CYCLES):
+            for _ in range(cfg.MQTT_MAX_CYCLES):
                 # While Eclipse Paho maintains a network handler loop,
                 # uMQTT network services have to be handles manually
                 m_mqtt.mqtt_client.check_msg()
@@ -736,7 +714,7 @@ def main():
 
             # Sleep for <processing_period> seconds
             count = 0
-            for step in range(cfg.settings.processing_period):
+            for _ in range(cfg.settings.processing_period):
                 # Quit sleeping if flag has been set (asynchronously) in 'mqtt_man_irr_cmd'
                 # message callback function
                 if (m_pump.pumps[0].busy or m_pump.pumps[1].busy):
@@ -757,7 +735,7 @@ def main():
                                        qos = 1, retain=True)
             m_mqtt.mqtt_client.send_queue()
             print_line('Finished in non-daemon-mode', sd_notify=True)
-            mqtt.mqtt_client.disconnect()
+            m_mqtt.mqtt_client.disconnect()
             break
   
 
