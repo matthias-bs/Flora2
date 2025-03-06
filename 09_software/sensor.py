@@ -56,15 +56,15 @@ def config_error(sensor):
                 'light_min',
                 'light_irr',
                 'light_max']:
-        if (not(m_config.settings.cp.has_option(sensor, option))):
+        if not m_config.settings.cp.has_option(sensor, option):
             print_line('The configuration file "config.ini" has a section "[' + sensor + ']",',
                        error=True, sd_notify=True)
             print_line('but the key "' + option + '" is missing.',
                        error=True, sd_notify=True)
             return True
     
-    if (m_config.settings.sensor_interface == 'ble'):
-        if (not(m_config.settings.cp.has_option(sensor, 'address'))):                
+    if m_config.settings.sensor_interface == 'ble':
+        if not m_config.settings.cp.has_option(sensor, 'address'):                
             print_line('The configured plant sensor interface is Bluetooth LE,')
             print_line('the configuration file "config.ini" has a section "[' + sensor + ']",',
                         error=True, sd_notify=True)
@@ -72,6 +72,7 @@ def config_error(sensor):
                         error=True, sd_notify=True)
             return True
     return False
+
 
 ###############################################################################
 # Sensor class - Sensor and plant data and methods
