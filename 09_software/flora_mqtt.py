@@ -26,6 +26,8 @@
 # 20210627 Added workarounds for MQTT over TLS
 #          removed non-MicroPython MQTT code
 #          added exception handling in mqtt_man_irr_duration_ctrl()
+# 20250306 Removed report command/control
+#          Added MQTT discovery messages for Home Assistant
 #
 # ToDo:
 # - 
@@ -37,6 +39,7 @@ import os
 import json
 import pump as m_pump
 
+# https://pypi.org/project/micropython-umqtt.simple2/
 if sys.implementation.name == "micropython":
     import ssl
     from umqtt.robust2 import MQTTClient
@@ -153,20 +156,72 @@ def mqtt_umqtt_cb(topic, msg, retained, dup):
     
     message = MQTTMessage(topic, msg)
     
-    if (topic == cfg.settings.base_topic_flora + '/man_report_cmd'):
-        mqtt_man_report_cmd(mqtt_client, None, message)
-    elif (topic == cfg.settings.base_topic_flora + '/man_irr_cmd'):
+    if (topic == cfg.settings.base_topic_flora + '/man_irr_cmd'):
         mqtt_man_irr_cmd(mqtt_client, None, message)
     elif (topic == cfg.settings.base_topic_flora + '/man_irr_duration_ctrl'):
         mqtt_man_irr_duration_ctrl(mqtt_client, None, message)
-    elif (topic == cfg.settings.base_topic_flora + '/auto_report_ctrl'):
-        mqtt_auto_report_ctrl(mqtt_client, None, message)
     elif (topic == cfg.settings.base_topic_flora + '/auto_irr_ctrl'):
         mqtt_auto_irr_ctrl(mqtt_client, None, message)
     elif (topic == cfg.settings.base_topic_flora + '/sleep_dis_ctrl'):
         mqtt_sleep_dis_ctrl(mqtt_client, None, message)
     else:
         mqtt_on_message(mqtt_client, None, message)
+
+
+def publish_discovery_sensor(name):
+    """
+    Publish MQTT discovery messages for Home Assistant
+    
+    Parameters:
+        name (string): sensor name (same as data topic)
+    """
+    state_topic = f"{cfg.settings.base_topic_flora}/{name}"
+    sensor_name = f"{cfg.settings.base_topic_flora}_{name}"
+    
+    if name == "temperature":
+        sensors = [
+            {"name": f"{sensor_name}", "stat_t": f"{state_topic}", "dev_cla": "temperature", "val_tpl": "{{ value }}", "unit_of_meas": "°C"},
+        ]
+    elif name == "ubatt":
+        sensors = [
+            {"name": f"{sensor_name}", "stat_t": f"{state_topic}", "dev_cla": "voltage", "val_tpl": "{{ value }}", "unit_of_meas": "mV"},
+        ]
+    elif name == "tank":
+        sensors = [
+            {"name": f"{sensor_name}_int", "stat_t": f"{cfg.settings.base_topic_flora}/tank", "dev_cla": "enum", "val_tpl": "{{ value }}", "unit_of_meas": ""},
+            {"name": f"{sensor_name}_str", "stat_t": f"{cfg.settings.base_topic_flora}/system", "dev_cla": "enum", "val_tpl": "{{ value_json.tank }}", "unit_of_meas": ""}
+        ]
+    elif name == "weather":
+        sensors = [
+            {"name": f"{name}_humidity", "stat_t": f"{state_topic}", "dev_cla": "humidity", "val_tpl": "{{ value_json.humidity | float }}", "unit_of_meas": "%"},        
+            {"name": f"{name}_temperature", "stat_t": f"{state_topic}", "dev_cla": "temperature", "val_tpl": "{{ value_json.temperature | float }}", "unit_of_meas": "°C"},
+            {"name": f"{name}_pressure", "stat_t": f"{state_topic}", "dev_cla": "atmospheric_pressure", "val_tpl": "{{ value_json.pressure | float }}", "unit_of_meas": "hPa"},
+        ]
+    else:
+        sensors = [
+            {"name": f"{name}_battery", "stat_t": f"{state_topic}", "dev_cla": "battery", "val_tpl": "{{ value_json.battery | int }}", "unit_of_meas": "%"},
+            {"name": f"{name}_brightness", "stat_t": f"{state_topic}", "dev_cla": "illuminance", "val_tpl": "{{ value_json.light | int }}", "unit_of_meas": "lx"},
+            {"name": f"{name}_moisture", "stat_t": f"{state_topic}", "dev_cla": "moisture", "val_tpl": "{{ value_json.moisture | int }}", "unit_of_meas": "%"},        
+            {"name": f"{name}_temperature", "stat_t": f"{state_topic}", "dev_cla": "temperature", "val_tpl": "{{ value_json.temperature | float }}", "unit_of_meas": "°C"},
+            {"name": f"{name}_conductivity", "stat_t": f"{state_topic}", "dev_cla": "conductivity", "val_tpl": "{{ value_json.conductivity | int }}", "unit_of_meas": "µS/cm"}
+        ]
+    
+    for sensor in sensors:
+        discovery_topic = f"homeassistant/sensor/{sensor['name']}/config"
+        discovery_payload = {
+            "name": sensor["name"],
+            "stat_t": sensor["stat_t"],
+            "val_tpl": sensor["val_tpl"],
+            "unit_of_meas": sensor["unit_of_meas"],
+            "dev_cla": sensor["dev_cla"],
+            "uniq_id": sensor["name"],
+            "dev": {
+                "identifiers": ["plant_sensor"],
+                "name": "Flora2",
+            }
+        }
+        mqtt_client.publish(discovery_topic, json.dumps(discovery_payload).encode("utf-8"))
+        mqtt_client.send_queue()
 
 
 #############################################################################################
@@ -185,10 +240,8 @@ def mqtt_setup_messages(subscribe = True):
     """
     if sys.implementation.name != "micropython":
         # Set topic specific message handlers
-        mqtt_client.message_callback_add(cfg.settings.base_topic_flora + '/man_report_cmd', mqtt_man_report_cmd)
         mqtt_client.message_callback_add(cfg.settings.base_topic_flora + '/man_irr_cmd', mqtt_man_irr_cmd)
         mqtt_client.message_callback_add(cfg.settings.base_topic_flora + '/man_irr_duration_ctrl', mqtt_man_irr_duration_ctrl)
-        mqtt_client.message_callback_add(cfg.settings.base_topic_flora + '/auto_report_ctrl', mqtt_auto_report_ctrl)
         mqtt_client.message_callback_add(cfg.settings.base_topic_flora + '/auto_irr_ctrl', mqtt_auto_irr_ctrl)
 
         # Message handler for reception of all other subsribed topics
@@ -199,7 +252,7 @@ def mqtt_setup_messages(subscribe = True):
 
     if (subscribe):
         # Subscribe to flora control MQTT topics
-        for topic in ['man_report_cmd', 'man_irr_cmd', 'man_irr_duration_ctrl', 'auto_report_ctrl', 'auto_irr_ctrl', 'sleep_dis_ctrl']:
+        for topic in ['man_irr_cmd', 'man_irr_duration_ctrl', 'auto_irr_ctrl', 'sleep_dis_ctrl']:
             print_line('Subscribing to MQTT topic ' + cfg.settings.base_topic_flora + '/' + topic,
                     sd_notify=True)
             mqtt_client.subscribe(cfg.settings.base_topic_flora + '/' + topic, qos=1)
@@ -215,23 +268,6 @@ def mqtt_setup_messages(subscribe = True):
 #############################################################################################
 # MQTT callbacks
 #############################################################################################
-def mqtt_man_report_cmd(client, userdata, msg):
-    """
-    Send report as mail.
-    
-    This is an MQTT message callback function
-    
-    Parameters:
-        client: client instance for this callback
-        userdata: private user data as set in Client() or user_data_set()
-        msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
-    """
-    print_line('MQTT message "man_report_cmd" received.', sd_notify=True)
-    
-    # Defer sending until sensor data has been read
-    cfg.settings.man_report = True
-
-    
 def mqtt_man_irr_cmd(client, userdata, msg):
     """
     Run irrigation for <irr_duration> seconds.
@@ -282,29 +318,6 @@ def mqtt_man_irr_duration_ctrl(client, userdata, msg):
         print_line('MQTT message "man_irr_duration_ctrl({})" received'.format(cfg.settings.irr_duration_man),
                 sd_notify=True)
         client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', msg.payload)
-
-
-def mqtt_auto_report_ctrl(client, userdata, msg):
-    """
-    Switch auto reporting on/off)
-
-    This is an MQTT message callback function
-
-    In this case, MQTT Dash sends the value as string/byte array.
-    (b'0'/b'1' means integer value 0/1)
-    The response message contains the original payload, which
-    is used by MQTT Dash to set the visual state.
-
-    Parameters:
-        client: client instance for this callback
-        userdata: private user data as set in Client() or user_data_set()
-        msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
-    """
-    cfg.settings.auto_report = int(msg.payload)
-
-    print_line('MQTT message "auto_report_ctrl({})" received'.format(cfg.settings.auto_report),
-               sd_notify=True)
-    client.publish(cfg.settings.base_topic_flora + '/auto_report_stat', msg.payload)
 
 
 def mqtt_auto_irr_ctrl(client, userdata, msg):
