@@ -28,6 +28,12 @@
 
 ![IoTMQTTPanel_flora2o_s](https://user-images.githubusercontent.com/83612361/125654145-21e2d790-d30e-4eed-98f8-6d1096079c67.png)
 
+## References
+
+Based on
+* [micropython-umqtt.robust2](https://pypi.org/project/micropython-umqtt.robust2/) 
+* [M5_ENVIII - micropython libraries for SHT30 and QMP6988](https://github.com/cdrajb/M5_ENVIII)
+
 ----
 
 ## Disclaimer and Legal
