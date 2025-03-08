@@ -31,7 +31,10 @@
 ## References
 
 Based on
-* [micropython-umqtt.robust2](https://pypi.org/project/micropython-umqtt.robust2/) 
+* [micropython-umqtt.robust2](https://pypi.org/project/micropython-umqtt.robust2/)
+* [MicroPython-MiFlora](https://github.com/matthias-bs/MicroPython-MiFlora)
+* [micropython-bme280](https://github.com/kevbu/micropython-bme280)
+* [MicroPython-Lib/DS18X20](https://github.com/micropython/micropython-lib/tree/master/micropython/drivers/sensor/ds18x20)
 * [M5_ENVIII - micropython libraries for SHT30 and QMP6988](https://github.com/cdrajb/M5_ENVIII)
 
 ----
