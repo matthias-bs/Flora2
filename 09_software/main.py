@@ -13,7 +13,6 @@
 #     <base_topic>/man_report_cmd            (-)
 #     <base_topic>/man_irr_cmd               (1|2)
 #     <base_topic>/man_irr_duration_ctrl     (<seconds>)
-#     <base_topic>/auto_report_ctrl          (0|1)
 #     <base_topic>/auto_irr_ctrl             (0|1)
 #     <base_topic/sleep_dis_ctrl             (0|1)
 #
@@ -21,7 +20,6 @@
 #     <base_topic>/status                    (online|offline|idle|dead$)
 #     <base_topic>/man_irr_stat              (0|1)
 #     <base_topic>/man_irr_duration_stat     (<seconds>)
-#     <base_topic>/auto_report_stat          (0|1)
 #     <base_topic>/auto_irr_stat             (0|1)
 #     <base_topic>/tank                      (0|1|2)
 #     <base_topic>/<sensor_name>             (JSON encoded data)*
@@ -114,6 +112,7 @@
 #          Modified string formatting, code improvements
 #          Removed conditional code execution with support of non-micropython
 #          platforms
+# 20250330 Added MQTT discovery messages
 #
 # ToDo:
 # 
@@ -311,15 +310,12 @@ def main():
         for i, sensor in enumerate(sensor_list):
             moisture[sensor] = m_moisture.Moisture(cfg.MOISTURE_ADC_PINS[i], cfg.MOISTURE_MIN_VAL, cfg.MOISTURE_MAX_VAL)
 
-    gcollect()
-
     # Init MQTT client
     m_mqtt.MQTTClient.DEBUG = True
-    m_mqtt.MQTTClient.MSG_QUEUE_MAX = 1
     m_mqtt.mqtt_umqtt_init()
 
     # Mark2 MQTT init done
-    #pin_mark.value(1)
+    # pin_mark.value(1)
 
     m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
                                qos=1, retain=True)
@@ -330,12 +326,12 @@ def main():
     # Initialize irrigation
     irrigation = m_irrigation.Irrigation()
 
-    if (cfg.settings.sensor_interface == 'mqtt'):
+    if cfg.settings.sensor_interface == 'mqtt':
         # Wait until MQTT data is valid (this may take a while...)
         print_line('Waiting for MQTT sensor data -->', sd_notify=True)
 
         for sensor in s.sensors:
-            while (not(s.sensors[sensor].valid)):
+            while not s.sensors[sensor].valid:
                 m_mqtt.mqtt_client.check_msg()
                 m_mqtt.mqtt_client.ping()
                 sleep(1)
@@ -343,7 +339,12 @@ def main():
                 print_line(sensor + ' ready!', sd_notify=True)
 
         print_line('<-- Initial reception of MQTT sensor data succeeded.', sd_notify=True)
+    
+    for sensor in s.sensors:
+        m_mqtt.publish_discovery_sensor(s.sensors[sensor].name)
 
+    m_mqtt.publish_discovery_sensor("tank")
+    
     meminfo('Start Main Loop')
 
     if (VERBOSITY > 0):     
@@ -453,6 +454,7 @@ def main():
                     for sensor in s.sensors:
                         s.sensors[sensor].update_temperature_sensor(temp)
                 print_line(f"DS1820 - Temperature: {temp}°C")
+                m_mqtt.publish_discovery_sensor("temperature")
                 m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/temperature',
                                          f'{temp:2.1f}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
             del temperature
@@ -462,6 +464,9 @@ def main():
         if cfg.settings.weather_sensor:
             valid, weather = m_weather.weather_data()
             if (valid):
+                m_mqtt.publish_discovery_sensor("weather")
+                print_line(f'Weather sensor - Temperature: {weather["temperature"]}°C, Humidity: {weather["humidity"]}%, ' + \
+                           f'Pressure: {weather["pressure"]}hPa')
                 weather_data = json.dumps(weather)
                 m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/weather', weather_data,
                                          qos = 1, retain=cfg.MQTT_DATA_RETAIN)
@@ -470,6 +475,7 @@ def main():
             ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
             ubatt.atten(machine.ADC.ATTN_6DB)
             print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
+            m_mqtt.publish_discovery_sensor("ubatt")
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/ubatt', 
                                      f'{ubatt.voltage}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
 
@@ -482,10 +488,9 @@ def main():
         del report
 
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/system', system, qos = 1, retain=True)
+        m_mqtt.mqtt_client.send_queue()
 
         # Publish status flags/values
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/auto_report_stat', '1' if cfg.settings.auto_report else '0',
-                                   qos = 1, retain=True)
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/auto_irr_stat', '1' if cfg.settings.auto_irrigation else '0',
                                    qos = 1, retain=True)
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', str(cfg.settings.irr_duration_man), 
@@ -526,7 +531,6 @@ def main():
                 # Prevent deep sleep if battery voltage input is disconnected
                 # to simplify debugging/flashing 
                 if (cfg.settings.deep_sleep and ubatt.voltage > 1000):
-                    save_state(alerts)
                     print_line(f'Entering deep sleep in 5 seconds, will wake up after {cfg.settings.processing_period} seconds ...')
                     m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "offline",
                                             qos = 1, retain=True)
@@ -544,8 +548,6 @@ def main():
                     except NameError as exc:
                         pass
                     for obj in s.sensors:
-                        del obj
-                    for obj in alerts:
                         del obj
                     del m_mqtt.mqtt_client
                     del cfg.settings
