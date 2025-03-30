@@ -19,6 +19,7 @@
 # 20210521 Created
 # 20250305 Added M5Stack ENV III sensor
 #          (http://docs.m5stack.com/en/hat/hat_envIII)
+# 20250330 Fixed SHT30 exception handling
 #
 # ToDo:
 # - 
@@ -32,6 +33,7 @@ from machine import Pin
 from machine import SoftI2C
 import bme280
 import sht30 # https://github.com/cdrajb/M5_ENVIII
+from sht30 import SHT30Error
 import qmp6988 # https://github.com/cdrajb/M5_ENVIII
 
 def weather_data():
@@ -61,10 +63,14 @@ def weather_data():
         print_line(f'Failed to access M5Stack ENV III SHT30 sensor!',
                    error=True, console=True, sd_notify=True)
     else:
-        valid = True
-        temperature, humidity = sht.measure()
-        data['temperature'] = round(temperature, 1)
-        data['humidity']    = round(humidity, 0)
+        try:
+            temperature, humidity = sht.measure()
+        except SHT30Error as exc:
+            pass
+        else:
+            valid = True
+            data['temperature'] = round(temperature, 1)
+            data['humidity']    = round(humidity, 0)
         
     try:
         qmp = qmp6988.QMP6988(i2c=bus)
