@@ -16,6 +16,7 @@
 #
 # 20210212 Initial version
 # 20210316 Added list of WLAN access points (NETWORKS)
+# 20250330 Removed email (SMTP) credentials
 #
 # ToDo:
 # - 
@@ -39,8 +40,3 @@ NETWORKS = [ # SSID, PWD, [MAC] (Optional)
 
 MQTT_USERNAME = 'mqtt_username'
 MQTT_PASSWORD = 'mqtt_password'
-
-SMTP_LOGIN    = 'smtp_login'
-SMTP_PASSWD   = 'smtp_passwd'
-SMTP_EMAIL    = 'smtp_sender@somedomain.org'
-SMTP_RECEIVER = 'smtp_receiver@someotherdomain.com'
