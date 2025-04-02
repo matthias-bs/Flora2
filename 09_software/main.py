@@ -113,6 +113,7 @@
 #          Removed conditional code execution with support of non-micropython
 #          platforms
 # 20250330 Added MQTT discovery messages
+# 20250402 Code improvements
 #
 # ToDo:
 # 
@@ -127,13 +128,10 @@
 ###############################################################################
 
 import sys
-import os
 import json
 import binascii
 import time
 from time import sleep
-from ntptime import settime
-
 
 import wifi
 import miflora
@@ -145,16 +143,18 @@ from bluetooth import BLE
 from machine import reset
 if sys.platform == "esp32":
     import adc1_cal
+else:
+    from gpio import GPIO
 
 # Flora specific modules
 import config as cfg
-from config import DEBUG, MEMINFO, VERBOSITY
+from config import MEMINFO, VERBOSITY
 import flora_mqtt as m_mqtt
 from garbage_collect import gcollect, meminfo
-from gpio import *
+
 import irrigation as m_irrigation
 import moisture as m_moisture
-from print_line import *
+from print_line import print_line
 import pump as m_pump
 import report as m_report
 import sensor as s
@@ -187,7 +187,7 @@ def main():
     # Set system clock from NTP server 
     try:
         ntptime.settime()
-    except OSError as e:
+    except OSError:
         wifi.deinit()
         machine.reset()
 
@@ -234,14 +234,15 @@ def main():
             print_line('Low voltage - entering deep sleep')
             machine.deepsleep(sleep_duration * 1000)
             while True:
-                 # Thou shall not pass!
-                 pass
+                # Thou shall not pass!
+                pass
 
 #    if MEMINFO:
 #    meminfo('Settings')
 
-    # Set BCM pin addressing mode
-    GPIO.setmode(GPIO.BCM)
+    if sys.platform != "esp32":
+        # Set BCM pin addressing mode
+        GPIO.setmode(GPIO.BCM)
 
     # Sensor power control object
     sensor_power = m_sensor_power.SensorPower(cfg.GPIO_SENSOR_POWER)
@@ -444,7 +445,7 @@ def main():
         # Mark5 BLE end
         #pin_mark.value(0)
 
-        # FIXME
+        # Read temperature sensor (optional)
         if cfg.settings.temperature_sensor:
             temperature = m_temperature.Temperature(cfg.GPIO_TEMP_SENS)
             if (temperature.devices > 0):
@@ -460,7 +461,7 @@ def main():
             del temperature
             gcollect()
         
-        # FIXME 
+        # Read weather sensor (optional)
         if cfg.settings.weather_sensor:
             valid, weather = m_weather.weather_data()
             if (valid):
@@ -543,9 +544,9 @@ def main():
                     del m_tank.tank
                     del m_pump.pumps
                     try:
-                        for obj in moisture:
+                        for _, obj in moisture.items():
                             del obj
-                    except NameError as exc:
+                    except NameError:
                         pass
                     for obj in s.sensors:
                         del obj
