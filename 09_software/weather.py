@@ -20,6 +20,7 @@
 # 20250305 Added M5Stack ENV III sensor
 #          (http://docs.m5stack.com/en/hat/hat_envIII)
 # 20250330 Fixed SHT30 exception handling
+# 20250402 Code improvements
 #
 # ToDo:
 # - 
@@ -27,13 +28,12 @@
 ###############################################################################
 
 import config as cfg
-from print_line import *
+from print_line import print_line
 
 from machine import Pin
 from machine import SoftI2C
 import bme280
 import sht30 # https://github.com/cdrajb/M5_ENVIII
-from sht30 import SHT30Error
 import qmp6988 # https://github.com/cdrajb/M5_ENVIII
 
 def weather_data():
@@ -48,7 +48,7 @@ def weather_data():
     
     try:
         bme = bme280.BME280(i2c=bus, address=cfg.BME280_ADDR, mode=bme280.BME280_OSAMPLE_1)
-    except OSError as exc:
+    except OSError:
         print_line(f'Failed to access BME280 sensor at I2C address {hex(cfg.BME280_ADDR)}!', 
                    error=True, console=True, sd_notify=True)
     else:
@@ -59,13 +59,13 @@ def weather_data():
 
     try:
         sht = sht30.SHT30(i2c=bus)
-    except OSError as exc:
-        print_line(f'Failed to access M5Stack ENV III SHT30 sensor!',
+    except OSError:
+        print_line('Failed to access M5Stack ENV III SHT30 sensor!',
                    error=True, console=True, sd_notify=True)
     else:
         try:
             temperature, humidity = sht.measure()
-        except SHT30Error as exc:
+        except sht30.SHT30Error:
             pass
         else:
             valid = True
@@ -74,9 +74,9 @@ def weather_data():
         
     try:
         qmp = qmp6988.QMP6988(i2c=bus)
-    except OSError as exc:
+    except OSError:
         valid = False
-        print_line(f'Failed to access M5Stack ENV III QMP6988 sensor!',
+        print_line('Failed to access M5Stack ENV III QMP6988 sensor!',
                    error=True, console=True, sd_notify=True)
     else:
         valid = True

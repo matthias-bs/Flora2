@@ -27,6 +27,7 @@
 #          added garbage collection
 # 20210607 Added support for 2nd pump
 # 20240305 Removed email support, added JSON output for MQTT
+# 20240402 Code improvements
 #
 # ToDo:
 #
@@ -60,6 +61,7 @@ class Report:
         """
         
         self.data = {}
+        self.min_light_irr = 1000000
         
     def gen_report(self):
         """
@@ -69,8 +71,8 @@ class Report:
         
         # Find minimum light_irr value of all sensors
         self.min_light_irr = 1000000
-        for s in m_sensor.sensors:
-            self.min_light_irr = min(self.min_light_irr, m_sensor.sensors[s].light_irr)
+        for _, s in m_sensor.sensors.items():
+            self.min_light_irr = min(self.min_light_irr, s.light_irr)
 
         self.sensor_settings()
         self.system_status()
@@ -95,8 +97,7 @@ class Report:
         """
         Add sensor (and plant) settings / status to report.
         """
-        for sensor in m_sensor.sensors:
-            s = m_sensor.sensors[sensor]
+        for _, s in m_sensor.sensors.items():
             self.data[s.name] = {}
             self.data[s.name]['settings'] = {}
             self.data[s.name]['settings']['plant'] = s.plant
@@ -121,7 +122,7 @@ class Report:
                 
                 self.data[s.name]['status']['moist_ul'] = s.moist_ul
                 self.data[s.name]['status']['moist_ll'] = s.moist_ll
-                self.data[s.name]['status']['moist_ul'] = s.moist_ul
+                self.data[s.name]['status']['moist_hl'] = s.moist_hl
                 self.data[s.name]['status']['moist_oh'] = s.moist_oh
                 self.data[s.name]['status']['cond_ul'] = s.cond_ul
                 self.data[s.name]['status']['cond_oh'] = s.cond_oh

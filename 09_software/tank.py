@@ -19,6 +19,7 @@
 # 20210201 Modified for compatibility with MicroPython / ESP32
 # 20210211 Fixed low()/empty() on ESP32
 # 20210519 Added global variable <tank>
+# 20250402 Code improvements
 #
 # ToDo:
 # - 
@@ -26,10 +27,11 @@
 ###############################################################################
 
 import sys
-from gpio import *
 
 if sys.implementation.name == "micropython":
     from machine import Pin
+else:
+    from gpio import GPIO
 
 ##############################################################################
 # Global variables

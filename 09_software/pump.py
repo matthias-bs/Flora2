@@ -27,6 +27,7 @@
 # 20210519 Added global variable <pump>
 # 20210605 Changed global integer valiable <pump> to list <pumps>
 # 20210609 Added property <state>
+# 20250402 Code improvements
 #
 # ToDo:
 # - Check/modify driver status for BTS117
@@ -35,13 +36,14 @@
 
 import sys
 from time import sleep
-from gpio import *
 
 import flora_mqtt as mqtt
 import config as cfg
 
 if sys.implementation.name == "micropython":
     from machine import Pin
+else:
+    from gpio import GPIO
 
 ##############################################################################
 # Global variables
@@ -101,7 +103,7 @@ class Pump:
     def _drvstatus(self):
         """Get raw value (bool) of status pin."""
         if sys.platform == "esp32":
-            return (self.pin_status.value())
+            return self.pin_status.value()
         else:
             return (GPIO.input(self.p_status) == GPIO.HIGH) 
 
@@ -119,7 +121,7 @@ class Pump:
                  0 otherwise.
         """
 
-        if (self.tank.empty & power == 1):
+        if self.tank.empty and power == 1:
             return 1
         if sys.platform == "esp32":
             self.pin_power.value(power)
@@ -140,7 +142,7 @@ class Pump:
                  2 if driver-status is not as expected during on-state
         """
         self.status = 0
-        if (self.tank.empty):
+        if self.tank.empty:
             self.status = 1
             return (self.status)
         
@@ -152,15 +154,15 @@ class Pump:
         sleep(0.5)
         
         count = 0
-        for step in range(on_time):
-            if (sys.platform != "esp32" and self._drvstatus != True):
+        for _ in range(on_time):
+            if sys.platform != "esp32" and self._drvstatus != True:
                 self.status = 2
                 break
-            if (self.tank.empty):
+            if self.tank.empty:
                 self.status = 1
-                break;
+                break
             if sys.implementation.name == "micropython":
-                if (count == cfg.settings.mqtt_keepalive):
+                if count == cfg.settings.mqtt_keepalive:
                     count = 0
                     mqtt.mqtt_client.ping()
                 else:
@@ -173,7 +175,7 @@ class Pump:
         else:
             GPIO.output(self.p_power, GPIO.LOW)
         
-        return (self.status)
+        return self.status
 
     @property
     def error(self):
@@ -182,12 +184,12 @@ class Pump:
     @property
     def status_str(self):
         """Get status of last pump activation as string."""
-        if (self.status == 0):
-            return ("o.k.")
-        elif (self.status == 1):
-            return ("tank empty")
+        if self.status == 0:
+            return "o.k."
+        elif self.status == 1:
+            return "tank empty"
         else:
-            return ("error")
+            return "error"
 
     @property
     def state(self):

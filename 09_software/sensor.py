@@ -165,6 +165,8 @@ class Sensor:
         self.light_ul = False
         self.light_il = False
         self.light_oh = False
+        # Upper light limit for irrigation
+        self.light_irr = 0
             
     def init_plant(self):
         """

@@ -32,7 +32,7 @@ import ds18x20
 import time
 import binascii
 from machine import Pin
-from gpio import *
+#from gpio import *
 
 ###############################################################################
 # Temperature class - Temperature sensor values
@@ -58,7 +58,7 @@ class Temperature:
         self._pin    = pin_no
         try:
             self._ds_sensor = ds18x20.DS18X20(onewire.OneWire(Pin(self._pin)))
-        except:
+        except AssertionError:
             print('Error: Temperature(): sensor access failed')
             
         self._roms = self._ds_sensor.scan()
