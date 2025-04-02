@@ -4,7 +4,7 @@
 # This module provides the Moisture class
 #
 # - provides analog moisture sensor value
-#  
+#
 #
 # created: 03/2021 updated: 06/2021
 #
@@ -18,9 +18,10 @@
 # 20210317 Created
 # 20210521 Modified return value in case of invalid data
 # 20210622 Changed to use adc1_cal and 6dB attenuation
+# 20250402 Code improvements
 #
 # ToDo:
-# - 
+# -
 #
 ###############################################################################
 
@@ -69,17 +70,17 @@ class Moisture:
         self._ul    = min_val if (min_val < max_val) else max_val
         self._oh    = max_val if (max_val > min_val) else min_val
         self.raw    = 0
-        
+
         if sys.implementation.name == "micropython" and sys.platform == "esp32":
             self._adc = adc1_cal.ADC1Cal(Pin(self._pin), cfg.MOIST_DIV)
-                        
+
             # set 6dB input attenuation ("suggested voltage range": 150 - 1750mV)
             self._adc.atten(ADC.ATTN_6DB)
-            
+
             # set 9 bit return values (returned range 0-511)
             self._adc.width(ADC.WIDTH_9BIT)   
 
-        
+
 
     @property
     def moisture(self):
@@ -100,7 +101,7 @@ class Moisture:
             # dummy value indicating invalid data
             return (False, -1)
 
-    
+
 #    def __str__(self):
 #        if (self.name != ""):
 #            name_str = "Name: {} ".format(self.name)
