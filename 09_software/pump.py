@@ -88,12 +88,12 @@ class Pump:
         self.p_status = pin_pump_status
         self.tank = tank
         if sys.platform == "esp32":
-            self.pin_power = Pin(pin_pump_power, Pin.OUT, value = 0)
+            self.pin_power = Pin(pin_pump_power, Pin.OUT, value = 0)  # pylint: disable=E0606
             #self.pin_status = Pin(pin_pump_status, Pin.IN)
         else:
-            GPIO.setup(self.p_power, GPIO.OUT)
-            GPIO.output(self.p_power, GPIO.LOW)
-            GPIO.setup(self.p_status, GPIO.IN)
+            GPIO.setup(self.p_power, GPIO.OUT)  # pylint: disable=E0606
+            GPIO.output(self.p_power, GPIO.LOW)  # pylint: disable=E0606
+            GPIO.setup(self.p_status, GPIO.IN)  # pylint: disable=E0606
         self.busy = 0
         self.timestamp = 0
         self.status = 0
@@ -105,7 +105,7 @@ class Pump:
         if sys.platform == "esp32":
             return self.pin_status.value()
         else:
-            return (GPIO.input(self.p_status) == GPIO.HIGH) 
+            return (GPIO.input(self.p_status) == GPIO.HIGH) # pylint: disable=E0606
 
     def control(self, power):
         """
@@ -126,7 +126,7 @@ class Pump:
         if sys.platform == "esp32":
             self.pin_power.value(power)
         else:
-            GPIO.output(self.p_power, power)
+            GPIO.output(self.p_power, power)  # pylint: disable=E0606
         return 0
 
     def power_on(self, on_time):
@@ -149,7 +149,7 @@ class Pump:
         if sys.platform == "esp32":
             self.pin_power.value(1)
         else:
-            GPIO.output(self.p_power, GPIO.HIGH)
+            GPIO.output(self.p_power, GPIO.HIGH) # pylint: disable=E0606
         
         sleep(0.5)
         
@@ -173,7 +173,7 @@ class Pump:
         if sys.platform == "esp32":
             self.pin_power.value(0)
         else:
-            GPIO.output(self.p_power, GPIO.LOW)
+            GPIO.output(self.p_power, GPIO.LOW) # pylint: disable=E0606
         
         return self.status
 
