@@ -124,7 +124,7 @@ settings = None
 # Settings class - Global settings from config file, MQTT messages and others
 ###############################################################################
 class Settings (ConfigParser):
-    def __init__(self, config_dir, delimiters, inline_comment_prefixes):
+    def __init__(self, _config_dir, delimiters, inline_comment_prefixes):
         super().__init__(delimiters=delimiters, inline_comment_prefixes=inline_comment_prefixes)
         self.irr_scheduled = [False, False]
         
