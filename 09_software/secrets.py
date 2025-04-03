@@ -18,7 +18,7 @@
 # 20210316 Added list of WLAN access points (NETWORKS)
 # 20250330 Removed email (SMTP) credentials
 #
-# ToDo:
+# Backlog:
 # - 
 #
 ###############################################################################
