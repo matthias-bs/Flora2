@@ -83,6 +83,7 @@
 #          All bit widths are supported now
 #          Removed rounding of the result in voltage()   
 # 20210514 Added support of 0/2.5/6 dB attenuation
+# 20250403 Code improvements (pylint)
 #
 # Backlog:
 # - add support of "Two Point Calibration"
@@ -93,6 +94,7 @@
 
 import machine
 from machine import ADC
+from micropython import const
 
 # Constant from
 # https://github.com/espressif/esp-idf/blob/master/components/soc/esp32/include/soc/soc.h
@@ -151,9 +153,11 @@ class ADC1Cal(machine.ADC):
         self._width   = 3
         self._atten   = None
         self._samples = samples
+        self._coeff_a = 0
+        self._coeff_b = 0
         self.vref     = self.read_efuse_vref() if (vref is None) else vref
 
-    def atten(self, attenuation):
+    def atten(self, attn):
         """
         Select attenuation of input signal
         
@@ -164,11 +168,11 @@ class ADC1Cal(machine.ADC):
         Parameters:
             attenuation (int): ADC.ATTN_0DB / ADC.ATTN_2_5DB / ADC.ATTN_6DB /  ADC.ATTN_11DB
         """        
-        assert (attenuation != ADC.ATTN_11DB), "Currently ADC.ATTN_11DB is not supported!"
-        super().atten(attenuation)
-        self._coeff_a = self.vref * _ADC1_VREF_ATTEN_SCALE[attenuation] / _ADC_12_BIT_RES
-        self._coeff_b = _ADC1_VREF_ATTEN_OFFSET[attenuation]
-        self._atten = attenuation
+        assert (attn != ADC.ATTN_11DB), "Currently ADC.ATTN_11DB is not supported!"
+        super().atten(attn)
+        self._coeff_a = self.vref * _ADC1_VREF_ATTEN_SCALE[attn] / _ADC_12_BIT_RES
+        self._coeff_b = _ADC1_VREF_ATTEN_OFFSET[attn]
+        self._atten = attn
         
     def width(self, adc_width):
         """
@@ -241,7 +245,7 @@ class ADC1Cal(machine.ADC):
         raw_val = 0
         
         # Read and accumulate ADC samples
-        for i in range(self._samples):
+        for _ in range(self._samples):
             raw_val += self.read()
         
         # Calculate average
