@@ -32,7 +32,7 @@
 #          real sensor output voltage in mV
 # 20250306 Removed Removed alert/report/email configuration
 #
-# ToDo:
+# Backlog:
 # - 
 #
 ###############################################################################
@@ -45,13 +45,12 @@ else:
     from micropython import const
 
 from ConfigParser import ConfigParser
-from secrets import *
-
+from secrets import MQTT_USERNAME, MQTT_PASSWORD
 
 ###############################################################################
 # Constants (User Area)
 ###############################################################################
-DEBUG               = const(0)     # False: 0 / True: 1
+#DEBUG               = const(0)     # False: 0 / True: 1
 MEMINFO             = const(0)     # False: 0 / True: 1
 VERBOSITY           = const(1)
 
@@ -78,8 +77,8 @@ PROJECT_URL         = 'https://github.com/matthias-bs/Flora2'
 #GPIO_PUMP_POWER      = [17, 27]
 #GPIO_PUMP_STATUS     = const(22)
 #GPIO_SENSOR_POWER    = const(18)
-#GPIO_I2C_SDA         = const(26) # FIXME
-#GPIO_I2C_SCL         = const(25) # FIXME
+#GPIO_I2C_SDA         = const(?)
+#GPIO_I2C_SCL         = const(?)
 
 # ESP32-WROOM-32
 GPIO_TANK_SENS_LOW   = const(23)
@@ -130,6 +129,7 @@ settings = None
 ###############################################################################
 class Settings (ConfigParser):
     def __init__(self, config_dir, delimiters, inline_comment_prefixes):
+        super().__init__(delimiters=delimiters, inline_comment_prefixes=inline_comment_prefixes)
         self.irr_scheduled = [False, False]
         
         cp = ConfigParser(delimiters, inline_comment_prefixes)

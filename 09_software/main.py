@@ -115,8 +115,7 @@
 # 20250330 Added MQTT discovery messages
 # 20250402 Code improvements
 #
-# ToDo:
-# 
+# Backlog:
 # - fix MQTT over TLS
 # - add daily min/max of sensor values
 # - compare light value against daily average
@@ -381,7 +380,7 @@ def main():
             # uMQTT network services have to be handled manually
             m_mqtt.mqtt_client.check_msg()
             m_mqtt.mqtt_client.send_queue()
-            time.sleep_ms(500)
+            time.sleep_ms(500) # pylint: disable=E1101
         # END FIXME
 
         if (sys.platform == "esp32"):
@@ -517,7 +516,7 @@ def main():
             # uMQTT network services have to be handles manually
             m_mqtt.mqtt_client.check_msg()
             m_mqtt.mqtt_client.send_queue()
-            time.sleep_ms(500)
+            time.sleep_ms(500) # pylint: disable=E1101
 
         if (VERBOSITY > 1):
             for sensor in s.sensors:

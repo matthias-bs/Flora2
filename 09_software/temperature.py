@@ -22,8 +22,8 @@
 #          Corrected comments/description
 # 20210521 Modified index handling
 #
-# ToDo:
-# - for multiple sensors: is the list returned by scan() ordered?
+# Backlog:
+# - For multiple sensors: is the list returned by scan() ordered?
 #
 ###############################################################################
 
@@ -85,7 +85,7 @@ class Temperature:
             return None
         
         self._ds_sensor.convert_temp()
-        time.sleep_ms(750)
+        time.sleep_ms(750) # pylint: disable=E1101
         return (self._ds_sensor.read_temp(self._roms[sensor_index]))
             
     

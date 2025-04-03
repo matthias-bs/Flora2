@@ -84,7 +84,7 @@
 #          Removed rounding of the result in voltage()   
 # 20210514 Added support of 0/2.5/6 dB attenuation
 #
-# ToDo:
+# Backlog:
 # - add support of "Two Point Calibration"
 # - add support of 11 dB attenuation
 #   (What's the point in the 11dB setting with its crooked characteristics?) 

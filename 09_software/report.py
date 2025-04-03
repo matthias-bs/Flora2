@@ -29,8 +29,7 @@
 # 20240305 Removed email support, added JSON output for MQTT
 # 20240402 Code improvements
 #
-# ToDo:
-#
+# Backlog:
 # - 
 #
 ###############################################################################

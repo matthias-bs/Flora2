@@ -29,7 +29,7 @@
 # 20210609 Added property <state>
 # 20250402 Code improvements
 #
-# ToDo:
+# Backlog:
 # - Check/modify driver status for BTS117
 #
 ###############################################################################
