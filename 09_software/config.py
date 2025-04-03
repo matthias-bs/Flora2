@@ -132,11 +132,7 @@ class Settings (ConfigParser):
         cp.optionxform = str
         
         # Load configuration file
-        if sys.implementation.name != "micropython":
-            cp.read([os.path.join(config_dir, 'config.ini.dist'),
-                     os.path.join(config_dir, 'config.ini')])
-        else:
-            cp.read('config.ini')
+        cp.read('config.ini')
         
         # General
         self.processing_period  = cp.getint('General', 'processing_period',         fallback=_PROCESSING_PERIOD)
