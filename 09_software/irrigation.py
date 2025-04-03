@@ -24,8 +24,9 @@
 # 20210327 Added more workarounds for MicroPython restrictions
 # 20210605 Added support of 2nd pump
 # 20210709 Bugfixes
+# 20250402 Code improvements
 #
-# ToDo:
+# Backlog:
 # - 
 #
 ###############################################################################
@@ -35,8 +36,8 @@ import config as cfg
 import flora_mqtt as mqtt
 import pump as m_pump
 import sensor as m_sensor
-from print_line import *
-from config import DEBUG, VERBOSITY
+from print_line import print_line
+from config import VERBOSITY
 
 ###############################################################################
 # Irrigation class - Manual and automatic irrigation control
@@ -46,7 +47,6 @@ class Irrigation:
         """
         The constructor for Irrigation class.
         """
-        pass
 
     ###################################################################################################
     # Handle manual irrigation
@@ -92,20 +92,11 @@ class Irrigation:
                     false otherwise
         """
         # Skip automatic irrigation during night time
-        # FIXME there is room for improvements...
-        #now = datetime.now()
-        #nighttime_start = now.replace(hour=settings.night_begin_hr, minute=settings.night_begin_min, second=0, microsecond=0)
-        #nighttime_end = now.replace(hour=settings.night_end_hr, minute=settings.night_end_min, second=0, microsecond=0)
-        (yy, mm, dd, h, m, s, dow, doy) = time.localtime()
-        #print('auto_irrigation(): now = {}'.format(n))
-        #now['tm_hour'] = settings.night_begin_hr
-        #now['tm_min'] = settings.night_begin_min
+        (yy, mm, dd, _, _, s, dow, doy) = time.localtime()
         h = cfg.settings.night_begin_hr
         m = cfg.settings.night_begin_min
-
         nighttime_start = time.mktime((yy, mm, dd, h, m, s, dow, doy))
-        #now['tm_hour'] = settings.night_end_hr
-        #now['tm_min'] = settings.night_end_min
+
         h = cfg.settings.night_end_hr
         m = cfg.settings.night_end_min
         nighttime_end = time.mktime((yy, mm, dd, h, m, s, dow, doy))

@@ -15,18 +15,19 @@
 # History:
 #
 # 20210316 Created
+# 20250402 Code improvements
 #
-# ToDo:
+# Backlog:
 # - 
 #
 ###############################################################################
 
 import sys
-from time import sleep
-from gpio import *
 
 if sys.implementation.name == "micropython":
     from machine import Pin
+else:
+    from gpio import GPIO
     
 ###############################################################################
 # SensorPower class - Sensor power control
@@ -47,6 +48,7 @@ class SensorPower:
             name (string):         instance name (for debugging)
         """
         self.p_power = pin_sensor_power
+        self.status = 0
         if sys.platform == "esp32":
             self.pin_power = Pin(self.p_power, Pin.OUT, value = 0)
         else:

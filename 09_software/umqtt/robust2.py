@@ -11,6 +11,8 @@ class MQTTClient(simple2.MQTTClient):
     NO_QUEUE_DUPS = True
     # Limit the number of unsent messages in the queue.
     MSG_QUEUE_MAX = 5
+    # How many PIDs we store for a sent message
+    CONFIRM_QUEUE_MAX = 10
     # When you reconnect, all existing subscriptions are renewed.
     RESUBSCRIBE = True
 
@@ -19,11 +21,15 @@ class MQTTClient(simple2.MQTTClient):
         See documentation for `umqtt.simple2.MQTTClient.__init__()`
         """
         super().__init__(*args, **kwargs)
-        self.subs = []  # List of stored subscriptions
-        self.msg_to_send = []  # Queue with list of messages to send
-        self.sub_to_send = []  # Queue with list of subscriptions to send
-        self.msg_to_confirm = {}  # Queue with a list of messages waiting for the server to confirm of the message.
-        self.sub_to_confirm = {}  # Queue with a subscription list waiting for the server to confirm of the subscription
+        self.subs = []  # List of stored subscriptions [ (topic, qos), ...]
+        # Queue with list of messages to send
+        self.msg_to_send = []  # [(topic, msg, retain, qos), (topic, msg, retain, qos), ... ]
+        # Queue with list of subscriptions to send
+        self.sub_to_send = []  # [(topic, qos), ...]
+        # Queue with a list of messages waiting for the server to confirm of the message.
+        self.msg_to_confirm = {}  # {(topic, msg, retain, qos): [pid, pid, ...]
+        # Queue with a subscription list waiting for the server to confirm of the subscription
+        self.sub_to_confirm = {}  # {(topic, qos): [pid, pid, ...]}
         self.conn_issue = None  # We store here if there is a connection problem.
 
     def is_keepalive(self):
@@ -60,18 +66,26 @@ class MQTTClient(simple2.MQTTClient):
         for data, pids in self.msg_to_confirm.items():
             if pid in pids:
                 if stat == 0:
-                    self.msg_to_send.insert(0, data)
-                pids.remove(pid)
-                if not pids:
+                    if data not in self.msg_to_send:
+                        self.msg_to_send.insert(0, data)
+                    pids.remove(pid)
+                    if not pids:
+                        self.msg_to_confirm.pop(data)
+                elif stat in (1, 2):
+                    # A message has been delivered at least once, so we are not waiting for other confirmations
                     self.msg_to_confirm.pop(data)
                 return
 
         for data, pids in self.sub_to_confirm.items():
             if pid in pids:
                 if stat == 0:
-                    self.sub_to_send.append(data)
-                pids.remove(pid)
-                if not pids:
+                    if data not in self.sub_to_send:
+                        self.sub_to_send.append(data)
+                    pids.remove(pid)
+                    if not pids:
+                        self.sub_to_confirm.pop(data)
+                elif stat in (1, 2):
+                    # A message has been delivered at least once, so we are not waiting for other confirmations
                     self.sub_to_confirm.pop(data)
 
     def connect(self, clean_session=True):
@@ -109,15 +123,10 @@ class MQTTClient(simple2.MQTTClient):
 
         Connection problems are captured and handled by `is_conn_issue()`
         """
-        try:
-            out = super().connect(False)
-            self.conn_issue = None
-            return out
-        except (OSError, simple2.MQTTException) as e:
-            self.conn_issue = (e, 4)
-            if self.sock:
-                self.sock.close()
-                self.sock = None
+        out = self.connect(False)
+        if self.conn_issue:
+            super().disconnect()
+        return out
 
     def resubscribe(self):
         """
@@ -127,6 +136,24 @@ class MQTTClient(simple2.MQTTClient):
         """
         for topic, qos in self.subs:
             self.subscribe(topic, qos, False)
+
+    def things_to_do(self):
+        """
+        The sum of all actions in the queues.
+
+        When the value equals 0, it means that the library has sent and confirms the sending:
+          * all messages
+          * all subscriptions
+
+        When the value equals 0, it means that the device can go into hibernation mode,
+        assuming that it has not subscribed to some topics.
+
+        :return: 0 (nothing to do) or int (number of things to do)
+        """
+        return len(self.msg_to_send) + \
+            len(self.sub_to_send) + \
+            sum([len(a) for a in self.msg_to_confirm.values()]) + \
+            sum([len(a) for a in self.sub_to_confirm.values()])
 
     def add_msg_to_send(self, data):
         """
@@ -211,6 +238,9 @@ class MQTTClient(simple2.MQTTClient):
                 # We postpone the message in case it is not delivered to the server.
                 # We will delete it when we receive a receipt.
                 self.msg_to_confirm.setdefault(data, []).append(out)
+                if len(self.msg_to_confirm[data]) > self.CONFIRM_QUEUE_MAX:
+                    self.msg_to_confirm.pop(0)
+
             return out
         except (OSError, simple2.MQTTException) as e:
             self.conn_issue = (e, 2)
@@ -245,6 +275,8 @@ class MQTTClient(simple2.MQTTClient):
         try:
             out = super().subscribe(topic, qos)
             self.sub_to_confirm.setdefault(data, []).append(out)
+            if len(self.sub_to_confirm[data]) > self.CONFIRM_QUEUE_MAX:
+                self.sub_to_confirm.pop(0)
             return out
         except (OSError, simple2.MQTTException) as e:
             self.conn_issue = (e, 3)

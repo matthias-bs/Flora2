@@ -35,20 +35,24 @@ class MQTTClient:
         :type keepalive: int
         :param ssl: Require SSL for the connection.
         :type ssl: bool
-        :param ssl_params: Required SSL parameters.
+        :param ssl_params: Required SSL parameters. Kwargs from function ssl.wrap_socket.
+                           See documentation: https://docs.micropython.org/en/latest/library/ssl.html#ssl.ssl.wrap_socket
+                           For esp8266, please refer to the capabilities of the axTLS library applied to the micropython port.
+                           https://axtls.sourceforge.net
         :type ssl_params: dict
         :param socket_timeout: The time in seconds after which the socket interrupts the connection to the server when
                                no data exchange takes place. None - socket blocking, positive number - seconds to wait.
         :type socket_timeout: int
         :param message_timeout: The time in seconds after which the library recognizes that a message with QoS=1
                                 or topic subscription has not been received by the server.
-        :type message_timeout: dict
+        :type message_timeout: int
         """
         if port == 0:
             port = 8883 if ssl else 1883
         self.client_id = client_id
         self.sock = None
-        self.poller = None
+        self.poller_r = None
+        self.poller_w = None
         self.server = server
         self.port = port
         self.ssl = ssl
@@ -80,29 +84,32 @@ class MQTTClient:
         :param n: Expected length of read bytes
         :type n: int
         :return:
+
+        Notes:
+        Current usocket implementation returns None on .read from
+        non-blocking socket with no data. However, OSError
+        EAGAIN is checked for in case this ever changes.
         """
-        # in non-blocking mode, may not download enough data
-        
-        # FIXME How about the undocumented error codes -128 and -113?
-        # read() exception should be handled properly.  
-        # In case of reading, we try until the desired amount of data has been received! 
-#        try:
-#            msg = b''
-#            for i in range(n):
-#                self._sock_timeout(self.poller_r, self.socket_timeout)
-#                msg += self.sock.read(1)
-#        except OSError as exc:
-#            if exc.errno > -1:
-#                print("_read():", exc)
-#                raise MQTTException(8)
-        msg = b''
-        for i in range(n):
-            self._sock_timeout(self.poller_r, self.socket_timeout)
-            msg += self.sock.read(1)
-        if msg == b'':  # Connection closed by host (?)
-            raise MQTTException(1)
-        if len(msg) != n:
+        if n < 0:
             raise MQTTException(2)
+        msg = b''
+        while len(msg) < n:
+            try:
+                rbytes = self.sock.read(n - len(msg))
+            except OSError as e:
+                if e.args[0] == 11:     # EAGAIN / EWOULDBLOCK
+                    rbytes = None
+                else:
+                    raise
+            except AttributeError:
+                raise MQTTException(8)
+            if rbytes is None:
+                self._sock_timeout(self.poller_r, self.socket_timeout)
+                continue
+            if rbytes == b'':
+                raise MQTTException(1) # Connection closed by host (?)
+            else:
+                msg += rbytes
         return msg
 
     def _write(self, bytes_wr, length=-1):
@@ -116,21 +123,11 @@ class MQTTClient:
         :return:
         """
         # In non-blocking socket mode, the entire block of data may not be sent.
-# FIXME How to handle partial writes? How about the undocumented error codes -128 and -113?
-#       write() exceptions should be handled properly.
-#        out = 0
-#        try:   
-#            self._sock_timeout(self.poller_w, self.socket_timeout)
-#            for i in range(len(bytes_wr)):
-#                while (self.sock.write(bytes_wr[i], 1) != 1):
-#                    pass
-#        except OSError as exc:
-#            if exc.errno > -1:
-#                print("_write():", exc)
-#                raise MQTTException(8)
-        self._sock_timeout(self.poller_w, self.socket_timeout)
-        out = self.sock.write(bytes_wr, length)
-
+        try:
+            self._sock_timeout(self.poller_w, self.socket_timeout)
+            out = self.sock.write(bytes_wr, length)
+        except AttributeError:
+            raise MQTTException(8)
         if length < 0:
             if out != len(bytes_wr):
                 raise MQTTException(3)
@@ -177,7 +174,20 @@ class MQTTClient:
     def _sock_timeout(self, poller, socket_timeout):
         if self.sock:
             res = poller.poll(-1 if socket_timeout is None else int(socket_timeout * 1000))
-            if not res:
+            # https://github.com/micropython/micropython/issues/3747#issuecomment-385650294
+            # Sockets on esp8266 don't return POLLHUP or POLLERR at all.
+            # If a connection is broken then the socket will become readable and a read on it will return b''.
+            # POLLIN(value:1) - you have something to read
+            # POLLHUP(value:16) - your input is ended
+            # POLLIN(1) & POLLHUP(16) = 17 - that meanss that your input is ended and that your have still
+            #                                something to read from the buffer
+            if res:
+                for fd, flag in res:
+                    if (not flag & uselect.POLLIN) and (flag & uselect.POLLHUP):
+                        raise MQTTException(2 if poller == self.poller_r else 3)
+                    if (flag & uselect.POLLERR):
+                        raise MQTTException(1)
+            else:
                 raise MQTTException(30)
         else:
             raise MQTTException(28)
@@ -237,17 +247,33 @@ class MQTTClient:
         :return: Existing persistent session of the client from previous interactions.
         :rtype: bool
         """
-        self.sock = socket.socket()
-        self.poller_r = uselect.poll()
-        self.poller_r.register(self.sock, uselect.POLLIN)
-        self.poller_w = uselect.poll()
-        self.poller_w.register(self.sock, uselect.POLLOUT)
-        addr = socket.getaddrinfo(self.server, self.port)[0][-1]
-        self.sock.connect(addr)
+        self.disconnect()
+
+        ai = socket.getaddrinfo(self.server, self.port)[0]
+
+        self.sock_raw = socket.socket(ai[0], ai[1], ai[2])
+        self.sock_raw.setblocking(False)
+
+        try:
+            self.sock_raw.connect(ai[-1])
+        except OSError as e:
+            import uerrno
+            if e.args[0] != uerrno.EINPROGRESS:
+                raise
+
         if self.ssl:
             import ussl
-            self.sock = ussl.wrap_socket(self.sock, **self.ssl_params)
-                
+            self.sock_raw.setblocking(True)
+            self.sock = ussl.wrap_socket(self.sock_raw, **self.ssl_params)
+            self.sock_raw.setblocking(False)
+        else:
+            self.sock = self.sock_raw
+
+        self.poller_r = uselect.poll()
+        self.poller_r.register(self.sock, uselect.POLLERR | uselect.POLLIN | uselect.POLLHUP)
+        self.poller_w = uselect.poll()
+        self.poller_w.register(self.sock, uselect.POLLOUT)
+
         # Byte nr - desc
         # 1 - \x10 0001 - Connect Command, 0000 - Reserved
         # 2 - Remaining Length
@@ -320,12 +346,23 @@ class MQTTClient:
         Disconnects from the MQTT server.
         :return: None
         """
-        self._write(b"\xe0\0")
-        self.poller_r.unregister(self.sock)
-        self.poller_w.unregister(self.sock)
-        self.sock.close()
+        if not self.sock:
+            return
+        try:
+            self._write(b"\xe0\0")
+        except (OSError, MQTTException):
+            pass
+        if self.poller_r:
+            self.poller_r.unregister(self.sock)
+        if self.poller_w:
+            self.poller_w.unregister(self.sock)
+        try:
+            self.sock.close()
+        except OSError:
+            pass
+        self.poller_r = None
+        self.poller_w = None
         self.sock = None
-        self.poller = None
 
     def ping(self):
         """
@@ -415,22 +452,29 @@ class MQTTClient:
         :return: None
         """
         if self.sock:
-            if not self.poller_r.poll(-1 if self.socket_timeout is None else 1):
-                self._message_timeout()
-                return None
             try:
-                res = self._read(1)  # Throws OSError on WiFi fail
-                if not res:
-                    self._message_timeout()
-                    return None
+                res = self.sock.read(1)
+                if res is None:
+                    # wait forever if no timeout, else wait 1 msec
+                    if not self.poller_r.poll(-1 if self.socket_timeout is None else 1):
+                        self._message_timeout()
+                        return None
+                    res = self.sock.read(1)
+                    if res is None:
+                        self._message_timeout()
+                        return None
             except OSError as e:
-                if e.args[0] == 110:  # Occurs when no incomming data
+                # 110: ETIMEDOUT 11: EAGAIN/EWOULDBLOCK
+                if e.args[0] == 110 or e.args[0] == 11:
                     self._message_timeout()
                     return None
                 else:
                     raise e
         else:
             raise MQTTException(28)
+
+        if res == b'':
+            raise MQTTException(1) # Connection closed by host
 
         if res == b"\xd0":  # PINGRESP
             if self._read(1)[0] != 0:

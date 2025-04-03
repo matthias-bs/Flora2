@@ -22,8 +22,8 @@
 #          Corrected comments/description
 # 20210521 Modified index handling
 #
-# ToDo:
-# - for multiple sensors: is the list returned by scan() ordered?
+# Backlog:
+# - For multiple sensors: is the list returned by scan() ordered?
 #
 ###############################################################################
 
@@ -32,7 +32,7 @@ import ds18x20
 import time
 import binascii
 from machine import Pin
-from gpio import *
+#from gpio import *
 
 ###############################################################################
 # Temperature class - Temperature sensor values
@@ -58,7 +58,7 @@ class Temperature:
         self._pin    = pin_no
         try:
             self._ds_sensor = ds18x20.DS18X20(onewire.OneWire(Pin(self._pin)))
-        except:
+        except AssertionError:
             print('Error: Temperature(): sensor access failed')
             
         self._roms = self._ds_sensor.scan()
@@ -85,7 +85,7 @@ class Temperature:
             return None
         
         self._ds_sensor.convert_temp()
-        time.sleep_ms(750)
+        time.sleep_ms(750) # pylint: disable=E1101
         return (self._ds_sensor.read_temp(self._roms[sensor_index]))
             
     

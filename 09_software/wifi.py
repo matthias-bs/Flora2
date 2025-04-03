@@ -14,17 +14,18 @@
 # History:
 #
 # 20210330 Extracted from boot.py
+# 20250402 Code improvements
 #
-# ToDo:
+# Backlog:
 # - 
 #
 ###############################################################################
 
 from time import sleep
-from network import WLAN, STA_IF, AP_IF, STAT_IDLE, STAT_CONNECTING, STAT_WRONG_PASSWORD, STAT_NO_AP_FOUND, STAT_GOT_IP
+from network import WLAN, STA_IF, AP_IF, STAT_CONNECTING
 from ubinascii import hexlify
 
-from secrets import *
+from secrets import NETWORKS
 
 
 USE_AP = False # Turn On Internal AP After Failed WiFi Station Connection
@@ -41,14 +42,14 @@ def init():
     station = WLAN(STA_IF)
     local_ap = WLAN(AP_IF)
 
-def connectWiFi(station):
-    if not station.active():
-        station.active(True)
+def connectWiFi(sta):
+    if not sta.active():
+        sta.active(True)
     
-    if waitForConnection(station):
+    if waitForConnection(sta):
         return True
 
-    aps = station.scan()
+    aps = sta.scan()
     aps.sort(key=lambda ap:ap[3], reverse=True)
 
     for ap in aps:
@@ -63,8 +64,8 @@ def connectWiFi(station):
                         break
 
             if found:
-                station.connect(net[0], net[1])
-                if waitForConnection(station):
+                sta.connect(net[0], net[1])
+                if waitForConnection(sta):
                     if USE_AP and local_ap.active():
                         local_ap.active(False)
                     return True
@@ -84,9 +85,9 @@ def deinit():
     station = None
     local_ap = None
 
-def waitForConnection(station):
-    while station.status() == STAT_CONNECTING:
+def waitForConnection(sta):
+    while sta.status() == STAT_CONNECTING:
         sleep(0.25)
 
-    return station.isconnected()
+    return sta.isconnected()
 

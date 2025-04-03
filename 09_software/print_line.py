@@ -17,8 +17,9 @@
 # History:
 #
 # 20210117 Extracted from flora.py
+# 20250402 Code improvements
 #
-# ToDo:
+# Backlog:
 # - 
 #
 ###############################################################################
@@ -27,7 +28,7 @@ import sys
 if sys.implementation.name != "micropython":
     import sdnotify
     from unidecode import unidecode
-    from colorama import Fore, Back, Style
+    from colorama import Fore, Style
     from time import strftime
 from time import localtime
 
@@ -39,7 +40,8 @@ from time import localtime
 if sys.implementation.name != "micropython":
     # Systemd Service Notifications
     # https://github.com/bb4242/sdnotify
-    """sd_notifier instance of SystemdNotifier class"""
+
+    # sd_notifier instance of SystemdNotifier class
     sd_notifier = sdnotify.SystemdNotifier()
 
     def print_line(text, error = False, warning=False, sd_notify=False, console=True):
@@ -65,7 +67,7 @@ if sys.implementation.name != "micropython":
         if sd_notify:
             sd_notifier.notify('STATUS={} - {}.'.format(timestamp_sd, unidecode(text)))
 else:
-    def print_line(text, error = False, warning=False, sd_notify=False, console=True):
+    def print_line(text, _error = False, _warning=False, _sd_notify=False, _console=True):
         
         dt = localtime()
         # date-time = (year, month, mday, hour, minute, second, weekday, yearday)
