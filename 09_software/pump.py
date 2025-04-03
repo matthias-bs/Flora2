@@ -40,7 +40,10 @@ from time import sleep
 import flora_mqtt as mqtt
 import config as cfg
 
-from machine import Pin
+if sys.implementation.name == "micropython":
+    from machine import Pin
+else:
+    from gpio import GPIO
 
 ##############################################################################
 # Global variables
