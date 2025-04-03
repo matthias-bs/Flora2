@@ -28,6 +28,7 @@
 #          added exception handling in mqtt_man_irr_duration_ctrl()
 # 20250306 Removed report command/control
 #          Added MQTT discovery messages for Home Assistant
+# 20250403 Code quality improvements
 #
 # Backlog:
 # - 
@@ -38,15 +39,10 @@ import sys
 import json
 import pump as m_pump
 
-# https://pypi.org/project/micropython-umqtt.simple2/
-if sys.implementation.name == "micropython":
-    #import ssl
-    from umqtt.robust2 import MQTTClient
-    import machine
-    import binascii
-#else:
-#    import ssl
-#    import paho.mqtt.client as mqtt 
+# https://pypi.org/project/micropython-umqtt.robust2/
+from umqtt.robust2 import MQTTClient
+import machine
+import binascii
 
 import config as cfg
 import sensor as s
