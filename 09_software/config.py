@@ -31,18 +31,14 @@
 # 20210622 Added MOIST_DIV, changed MOISTURE_MIN_VAL/MOISTURE_MAX_VAL to
 #          real sensor output voltage in mV
 # 20250306 Removed Removed alert/report/email configuration
+# 20240403 Code quality improvements
 #
 # Backlog:
 # - 
 #
 ###############################################################################
 
-import sys
-
-if sys.implementation.name != "micropython":
-    import os.path
-else:
-    from micropython import const
+from micropython import const
 
 from ConfigParser import ConfigParser
 from secrets import MQTT_USERNAME, MQTT_PASSWORD
