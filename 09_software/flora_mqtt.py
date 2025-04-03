@@ -116,8 +116,9 @@ def mqtt_umqtt_init():
         
     print_line('<-- MQTT connection established ({} session)'.format("existing" if rc else "clean"), sd_notify=True)
     
-    # FIXME Something is quite different/wrong with SSL sockets. To allow non-secure and secure
-    # communication, we currently do not check the connection now, because that would fail in the latter case.
+    # FIXME       # pylint: disable=fixme
+    # Something is quite different/wrong with SSL sockets. To allow non-secure and secure communication,            
+    # we currently do not check the connection now, because that would fail in the latter case.
 #    else:
 #        while mqtt_client.is_conn_issue():
 #            # If the connection is successful, the is_conn_issue
