@@ -619,10 +619,10 @@ if __name__ == '__main__':
     if MEMINFO:
         meminfo('Boot finished')
 
-    gc.enable()
+    gc.enable() # pylint: disable=possibly-used-before-assignment
     #print(f"gc.mem_free(): {gc.mem_free()}; gc.mem_alloc(): {gc.mem_alloc()}")
     #gc.mem_free(): 23344; gc.mem_alloc(): 87824
-    gc.threshold(gc.mem_free() // 2 + gc.mem_alloc())
+    gc.threshold(gc.mem_free() // 2 + gc.mem_alloc()) # pylint: disable=possibly-used-before-assignment,no-member
 
     if MEMINFO:
         meminfo('__main__')
