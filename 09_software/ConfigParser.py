@@ -17,7 +17,7 @@ Source: https://github.com/Mika64/micropython-lib/blob/master/configparser/Confi
 TRUE_ENCODINGS = ["1", "yes", "true", "on", "True"]
 
 class ConfigParser:
-    def __init__(self, delimiters, inline_comment_prefixes):
+    def __init__(self, delimiters, inline_comment_prefixes): # pylint: disable=unused-argument
         self.config_dict = {}
     
     def sections(self):
@@ -49,7 +49,7 @@ class ConfigParser:
             raise
         return self.config_dict[section].keys()
 
-    def read(self, filename=None, fp=None):
+    def read(self, filename=None, _fp=None):
         if type(filename) is list:
             for f in filename:
                 self._read(f)
@@ -63,7 +63,7 @@ class ConfigParser:
             raise
         elif not fp and filename:
             try:
-                with open(filename, 'r') as fp:
+                with open(filename, 'r', encoding='utf-8') as fp:
                     self.config_dict = {}
                     section = 'Default'
                     
@@ -149,7 +149,7 @@ class ConfigParser:
             print("ERROR : no filename and no fp")
             raise
         elif not fp and filename:
-            fp = open(filename,'w')
+            fp = open(filename,'w', encoding='utf-8')
 
         for section in self.config_dict.keys():
             fp.write('[%s]\n' % section)
@@ -170,7 +170,7 @@ class ConfigParser:
         """Remove an option."""
         if not self.has_section(section) \
                 or not self.has_option(section,option):
-                    raise
+            raise
         del self.config_dict[section][option]
 
     def remove_section(self, section):
