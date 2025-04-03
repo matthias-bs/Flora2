@@ -41,12 +41,12 @@ class ConfigParser:
         if self.has_section(section) and not option in self.config_dict[section]:
             self.config_dict[section][option] = None
         else:
-            raise
+            raise ValueError("Section %s does not exist or option %s already exists" % (section, option))
 
     def options(self, section):
         """Return a list of option names for the given section name."""
         if not section in self.config_dict:
-            raise
+            raise ValueError("Section %s does not exist" % section)
         return self.config_dict[section].keys()
 
     def read(self, filename=None, _fp=None):
@@ -60,7 +60,7 @@ class ConfigParser:
         """Read and parse a filename or a list of filenames."""
         if not fp and not filename:
             print("ERROR : no filename and no fp")
-            raise
+            raise ValueError("No filename or file pointer provided")
         elif not fp and filename:
             try:
                 with open(filename, 'r', encoding='utf-8') as fp:
@@ -91,10 +91,10 @@ class ConfigParser:
     def get(self, section, option, fallback=''):
         """Get value of a givenoption in a given section."""
         if not self.has_section(section):
-            raise
+            raise ValueError("Section %s does not exist" % section)
         if not self.has_option(section,option):
             if (fallback == ''):
-                raise
+                raise ValueError("Option %s does not exist in section %s" % (option, section))
             else:
                 return fallback
 
@@ -103,10 +103,10 @@ class ConfigParser:
     def getboolean(self, section, option, fallback=None):
         """Get value of a givenoption in a given section."""
         if not self.has_section(section):
-            raise
+            raise ValueError("Section %s does not exist" % section)
         if not self.has_option(section,option):
             if (fallback == None):
-                raise
+                raise ValueError("Option %s does not exist in section %s" % (option, section))
             else:
                 return ((fallback in TRUE_ENCODINGS) or (fallback==1))
         
@@ -115,10 +115,10 @@ class ConfigParser:
     def getint(self, section, option, fallback=None):
         """Get value of a givenoption in a given section."""
         if not self.has_section(section):
-            raise
+            raise ValueError("Section %s does not exist" % section)
         if not self.has_option(section,option):
             if (fallback == None):
-                raise
+                raise ValueError("Option %s does not exist in section %s" % (option, section))
             else:
                 return fallback
         return int(self.config_dict[section][option])
@@ -126,10 +126,10 @@ class ConfigParser:
     def getfloat(self, section, option, fallback=None):
         """Get value of a givenoption in a given section."""
         if not self.has_section(section):
-            raise
+            raise ValueError("Section %s does not exist" % section)
         if not self.has_option(section,option):
             if (fallback == None):
-                raise
+                raise ValueError("Option %s does not exist in section %s" % (option, section))
             else:
                 return fallback
         return float(self.config_dict[section][option])
@@ -137,7 +137,7 @@ class ConfigParser:
     def has_option(self, section, option):
         """Check for the existence of a given option in a given section."""
         if not section in self.config_dict:
-            raise
+            raise ValueError("Section %s does not exist" % section)
         if option in self.config_dict[section].keys():
             return True
         else:
@@ -146,8 +146,7 @@ class ConfigParser:
     def write(self, filename = None, fp = None):
         """Write an .ini-format representation of the configuration state."""
         if not fp and not filename:
-            print("ERROR : no filename and no fp")
-            raise
+            raise ValueError("No filename or file pointer provided")
         elif not fp and filename:
             fp = open(filename,'w', encoding='utf-8')
 
@@ -170,11 +169,11 @@ class ConfigParser:
         """Remove an option."""
         if not self.has_section(section) \
                 or not self.has_option(section,option):
-            raise
+            raise ValueError("Section %s or option %s does not exist" % (section, option))
         del self.config_dict[section][option]
 
     def remove_section(self, section):
         """Remove a file section."""
         if not self.has_section(section):
-            raise
+            raise ValueError("Section %s does not exist" % section)
         del self.config_dict[section]
