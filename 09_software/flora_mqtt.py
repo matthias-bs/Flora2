@@ -29,32 +29,30 @@
 # 20250306 Removed report command/control
 #          Added MQTT discovery messages for Home Assistant
 #
-# ToDo:
+# Backlog:
 # - 
 #
 ###############################################################################
 
 import sys
-import os
 import json
 import pump as m_pump
 
 # https://pypi.org/project/micropython-umqtt.simple2/
 if sys.implementation.name == "micropython":
-    import ssl
+    #import ssl
     from umqtt.robust2 import MQTTClient
     import machine
     import binascii
-else:
-    import ssl
-    import paho.mqtt.client as mqtt
+#else:
+#    import ssl
+#    import paho.mqtt.client as mqtt 
 
 import config as cfg
 import sensor as s
-import report as m_report
-from time import sleep, sleep_ms
-from config import DEBUG, VERBOSITY, PUMP_BUSY_MAN
-from print_line import *
+#from time import sleep_ms
+from config import VERBOSITY, PUMP_BUSY_MAN
+from print_line import print_line
 
 
 ##############################################################################
@@ -95,7 +93,7 @@ def mqtt_umqtt_init():
     unique_id = binascii.hexlify(machine.unique_id()).decode("ascii")
     
     if cfg.settings.mqtt_tls:
-        with open(cfg.settings.mqtt_ca_cert, "r") as f:
+        with open(cfg.settings.mqtt_ca_cert, "r", encoding='utf-8') as f:
             cert = f.read()
     else:
         cert = None
@@ -268,7 +266,7 @@ def mqtt_setup_messages(subscribe = True):
 #############################################################################################
 # MQTT callbacks
 #############################################################################################
-def mqtt_man_irr_cmd(client, userdata, msg):
+def mqtt_man_irr_cmd(client, _userdata, msg):
     """
     Run irrigation for <irr_duration> seconds.
 
@@ -293,7 +291,7 @@ def mqtt_man_irr_cmd(client, userdata, msg):
         m_pump.pumps[idx].busy = PUMP_BUSY_MAN
 
 
-def mqtt_man_irr_duration_ctrl(client, userdata, msg):
+def mqtt_man_irr_duration_ctrl(client, _userdata, msg):
     """
     Set manual irrigation duration (<irr_duration_man>)
 
@@ -320,7 +318,7 @@ def mqtt_man_irr_duration_ctrl(client, userdata, msg):
         client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', msg.payload)
 
 
-def mqtt_auto_irr_ctrl(client, userdata, msg):
+def mqtt_auto_irr_ctrl(client, _userdata, msg):
     """
     Switch auto irrigation on/off
 
@@ -343,7 +341,7 @@ def mqtt_auto_irr_ctrl(client, userdata, msg):
     client.publish(cfg.settings.base_topic_flora + '/auto_irr_stat', msg.payload)
 
 
-def mqtt_sleep_dis_ctrl(client, userdata, msg):
+def mqtt_sleep_dis_ctrl(client, _userdata, msg):
     """
     Disable deep sleep mode
 
@@ -367,7 +365,7 @@ def mqtt_sleep_dis_ctrl(client, userdata, msg):
     client.publish(cfg.settings.base_topic_flora + '/sleep_dis_stat', str(1 if sleep_disable else 0))
 
 
-def mqtt_on_message(client, userdata, msg):
+def mqtt_on_message(_client, _userdata, msg):
     """
     Handle all other MQTT messages, i.e. those with sensor data.
 
@@ -378,7 +376,7 @@ def mqtt_on_message(client, userdata, msg):
         userdata: private user data as set in Client() or user_data_set()
         msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain    
     """
-    base_topic, sensor = msg.topic.split('/')
+    _base_topic, sensor = msg.topic.split('/')
 
     # Convert JSON ecoded data to dictionary
     message = json.loads(msg.payload.decode('utf-8'))
@@ -388,7 +386,6 @@ def mqtt_on_message(client, userdata, msg):
                    sd_notify=True)
 
     # Discard data if moisture value suddenly drops to zero
-    # FIXME: Is this still useful?
     if ((float(message['moisture']) == 0) and
         (s.sensors[sensor].moist > 5)):
         return
