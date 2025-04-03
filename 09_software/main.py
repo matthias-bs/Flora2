@@ -140,6 +140,8 @@ import ntptime
 import uerrno
 from bluetooth import BLE
 from machine import reset
+if sys.implementation.name == "micropython":
+    import gc
 if sys.platform == "esp32":
     import adc1_cal
 else:
@@ -215,7 +217,7 @@ def main():
     cfg.settings = cfg.Settings(config_dir, delimiters=('=', ), inline_comment_prefixes=('#'))
 
     if cfg.settings.battery_voltage:
-        ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
+        ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated") # pylint: disable=E0601
         ubatt.atten(machine.ADC.ATTN_6DB)
         print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
 
@@ -436,7 +438,7 @@ def main():
                         print_line("MiFlora disconnected.")
                     else:
                         print_line("MiFlora disconnect failed!")
-                        miflora_ble._reset()
+                        miflora_ble._reset() # pylint: disable=W0212
                 del miflora_ble
             del ble
             gcollect()

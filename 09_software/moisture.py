@@ -72,13 +72,13 @@ class Moisture:
         self.raw    = 0
 
         if sys.implementation.name == "micropython" and sys.platform == "esp32":
-            self._adc = adc1_cal.ADC1Cal(Pin(self._pin), cfg.MOIST_DIV)
+            self._adc = adc1_cal.ADC1Cal(Pin(self._pin), cfg.MOIST_DIV) # pylint: disable=E0601
 
             # set 6dB input attenuation ("suggested voltage range": 150 - 1750mV)
-            self._adc.atten(ADC.ATTN_6DB)
+            self._adc.atten(ADC.ATTN_6DB) # pylint: disable=E0601
 
             # set 9 bit return values (returned range 0-511)
-            self._adc.width(ADC.WIDTH_9BIT)   
+            self._adc.width(ADC.WIDTH_9BIT) # pylint: disable=E0601
 
 
 
