@@ -59,6 +59,7 @@
 #          fixed several bugs and cleaned up code
 #          initial release on GitHub
 # 20210506 Minor changes to improve integration as module
+# 20250403 Fixed/masked pylint errors/warnings
 #
 # Backlog:
 # 
@@ -67,7 +68,7 @@
 ###############################################################################
 
 
-import ubluetooth
+import ubluetooth # pylint: disable=unused-import
 import time
 import struct
 import binascii
@@ -203,7 +204,7 @@ S_READ_FIRMWARE_DONE  = const(4)
 S_MODE_CHANGE_DONE    = const(5)
 S_READ_SENSOR_DONE    = const(6)
 
-       
+
 class Mi_Flora:
     """
     MiFlora Flower Care Bluetooth Low Energy (BLE) Driver
@@ -247,6 +248,41 @@ class Mi_Flora:
         self._ble = ble
         self._ble.active(True)
         self._ble.irq(self._irq)
+        self.services = {}
+        self.search_service = None
+        self.characteristics = {}
+        self._notify_callback = None
+        self._conn_handle = None
+        self._start_handle = None
+        self._end_handle = None
+        self._value_handle = None
+        
+        # Handled by _reset()
+        self.state       = S_INIT
+        self.search_addr = None
+        self.addr_found  = False
+        self.name        = None
+        self.rssi        = 0
+        self.version     = None
+        self.battery     = None
+        self.temp        = None
+        self.light       = None
+        self.moist       = None
+        self.cond        = None
+        self._addr_type  = None
+        self._addr       = None
+        self._value      = None
+        self._scan_callback      = None
+        self._conn_callback      = None
+        self._serv_done_callback = None
+        self._char_done_callback = None
+        self._read_callback      = None
+        self._write_callback     = None
+        self._notify_callback    = None
+        self._conn_handle        = None
+        self._start_handle       = None
+        self._end_handle         = None
+        self._value_handle       = None
 
         self._reset()
 
@@ -264,7 +300,6 @@ class Mi_Flora:
         self.light       = None
         self.moist       = None
         self.cond        = None
-
         
         # Cached name and address from a successful scan.
         self._addr_type  = None
@@ -331,8 +366,8 @@ class Mi_Flora:
                 self._addr = bytes(
                     addr
                 )  # Note: addr buffer is owned by caller so need to copy it.
-                if _name != '?':
-                    self.name = _name
+                #if _name != '?':
+                #    self.name = _name
 #                self._debug('Device name: {}'.format(_name), 1)
                 self._ble.gap_scan(None)
 
@@ -387,7 +422,7 @@ class Mi_Flora:
 #            self._debug("bt irq - gattc service done", 2)
             self.state = S_SERVICE_DONE
             if self._serv_done_callback:
-                self._serv_done_callback()
+                self._serv_done_callback() # pylint: disable=not-callable
                 self._serv_done_callback = None
                     
         elif event == _IRQ_GATTC_CHARACTERISTIC_RESULT:
@@ -406,7 +441,7 @@ class Mi_Flora:
 #            self._debug("bt irq - gattc characteristic done", 2)
             self.state = S_CHARACTERISTIC_DONE
             if self._char_done_callback:
-                self._char_done_callback()
+                self._char_done_callback() # pylint: disable=not-callable
                 self._char_done_callback = None
 
         elif event == _IRQ_GATTC_READ_RESULT:
@@ -422,7 +457,7 @@ class Mi_Flora:
         elif event == _IRQ_GATTC_READ_DONE:
             # Read completed (no-op).
 #            self._debug("bt irq - gattc read done", 2)
-            conn_handle, value_handle, status = data
+            conn_handle, value_handle, _status = data
             if AUTO_MODE and self.state == S_READ_FIRMWARE_DONE:
                 self.mode_change(self.mode_change_done)
 
@@ -431,7 +466,7 @@ class Mi_Flora:
             # Note: The value_handle will be zero on btstack (but present on NimBLE).
             # Note: Status will be zero on success, implementation-specific value otherwise.
 #            self._debug("bt irq - gattc write done", 2)
-            conn_handle, value_handle, status = data
+            conn_handle, value_handle, _status = data
             if conn_handle == self._conn_handle and value_handle == self._value_handle:
 #                self._debug("status: {}".format(status), 3)
                 if self._write_callback:
@@ -447,11 +482,11 @@ class Mi_Flora:
             if conn_handle == self._conn_handle and value_handle == self._value_handle:
                 self._update_value(notify_data)
                 if self._notify_callback:
-                    self._notify_callback(self._value)
+                    self._notify_callback(self._value) # pylint: disable=not-callable
 
-    """
-    Action trigger methods
-    """
+    ###############################################################################
+    # Action trigger methods
+    ###############################################################################
     def scan(self, callback=None):
         """
         Find all available devices.
@@ -467,7 +502,7 @@ class Mi_Flora:
         self._scan_callback = callback
         try:
             self._ble.gap_scan(2000, 30000, 30000, True)
-        except OSError as e:
+        except OSError:
             pass
 
     def gap_connect(self, addr_type=None, addr=None, callback=None):
@@ -501,7 +536,7 @@ class Mi_Flora:
         try:
             self._ble.gap_connect(self._addr_type, self._addr)
             return True
-        except OSError as e:
+        except OSError:
             return False
         
     def disconnect(self):
@@ -513,7 +548,7 @@ class Mi_Flora:
             return
         try:
             self._ble.gap_disconnect(self._conn_handle)
-        except OSError as e:
+        except OSError:
             pass
         self._reset()
         
@@ -534,7 +569,7 @@ class Mi_Flora:
         self._read_callback = callback
         try:
             self._ble.gattc_read(self._conn_handle, self._value_handle)
-        except OSError as e:
+        except OSError:
             pass
 
     def read_firmware(self, callback):
@@ -556,7 +591,7 @@ class Mi_Flora:
         self._value_handle = _HANDLE_READ_VERSION_BATTERY
         try:
             self._ble.gattc_read(self._conn_handle, self._value_handle)
-        except OSError as e:
+        except OSError:
             pass
    
     def mode_change(self, callback):
@@ -576,7 +611,7 @@ class Mi_Flora:
         self._value_handle = _HANDLE_WRITE_MODE_CHANGE
         try:
             self._ble.gattc_write(self._conn_handle, self._value_handle, _DATA_MODE_CHANGE, 1)
-        except OSError as e:
+        except OSError:
             pass
     
     def read_sensor(self, callback):
@@ -598,13 +633,14 @@ class Mi_Flora:
         self._value_handle = _HANDLE_READ_SENSOR_DATA
         try:
             self._ble.gattc_read(self._conn_handle, self._value_handle)
-        except OSError as e:
+        except OSError:
             pass
     
-    """
-    Callback methods
-    """
-    def scan_done(self, addr_type, addr, name):
+    ###############################################################################
+    # Callback methods
+    ###############################################################################
+
+    def scan_done(self, _addr_type, _addr, _name):
         """
         Callback for scan().
         
@@ -666,9 +702,10 @@ class Mi_Flora:
         self.cond  = cond[0]
         self.state = S_READ_SENSOR_DONE
 
-    """
-    Status query methods
-    """
+    ###############################################################################
+    # Status query methods
+    ###############################################################################
+
     def is_connected(self):
         """
         Check if connected to device.
@@ -693,12 +730,12 @@ class Mi_Flora:
             bool: True  desired status occurred,
                   False timeout ocurred.
         """
-        t0 = time.ticks_ms()
+        t0 = time.ticks_ms() # pylint: disable=no-member
         
-        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:
+        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms: # pylint: disable=no-member
             if self.is_connected() == status:
                 return True
-            time.sleep_ms(_T_WAIT)
+            time.sleep_ms(_T_WAIT) # pylint: disable=no-member
         return False
 
     def wait_for(self, state, timeout_ms):
@@ -715,16 +752,17 @@ class Mi_Flora:
             bool: True  desired status occurred,
                   False timeout ocurred.
         """
-        t0 = time.ticks_ms()
-        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:
+        t0 = time.ticks_ms() # pylint: disable=no-member
+        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms: # pylint: disable=no-member
             if self.state == state:
                 return True
-            time.sleep_ms(_T_WAIT)
+            time.sleep_ms(_T_WAIT) # pylint: disable=no-member
         return False
 
-    """
-    Helper methods
-    """
+    ###############################################################################
+    # Helper methods
+    ###############################################################################
+    
     def _update_value(self, data):
         """
         Update value from a notification or a read access.
