@@ -26,7 +26,12 @@
 #
 ###############################################################################
 
-from machine import Pin
+import sys
+
+if sys.implementation.name == "micropython":
+    from machine import Pin
+else:
+    from gpio import GPIO
 
 ##############################################################################
 # Global variables
