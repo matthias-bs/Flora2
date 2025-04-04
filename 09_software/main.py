@@ -604,8 +604,6 @@ if __name__ == '__main__':
     if MEMINFO:
         meminfo('Boot begin')
 
-    wifi_manager.init()
-
     if wifi_manager.connect():
         print_line("WiFi connection ready!", error=True)
         print_line(f'Network config: {wifi_manager.station.ifconfig()}')
