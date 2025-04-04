@@ -20,7 +20,7 @@
 # 20210211 Fixed low()/empty() on ESP32
 # 20210519 Added global variable <tank>
 # 20250402 Code improvements
-
+# 20250404 Changed Tank class to singleton
 #
 # Backlog:
 # - 
