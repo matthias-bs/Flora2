@@ -15,6 +15,7 @@
 #
 # 20210330 Extracted from boot.py
 # 20250402 Code improvements
+# 20250403 Added singleton pattern
 #
 # Backlog:
 # - 
@@ -22,72 +23,75 @@
 ###############################################################################
 
 from time import sleep
-from network import WLAN, STA_IF, AP_IF, STAT_CONNECTING
-from ubinascii import hexlify
-
+from network import WLAN, STA_IF, AP_IF
 from secrets import NETWORKS
 
+USE_AP = False  # Turn On Internal AP After Failed WiFi Station Connection
 
-USE_AP = False # Turn On Internal AP After Failed WiFi Station Connection
-station = None
-local_ap = None
 
-# connectWiFi - allows to connect to one access point from a list
-# https://forum.micropython.org/viewtopic.php?t=2951
+class WiFiManager:
+    _instance = None  # Class-level variable to hold the singleton instance
+    _initialized = False  # Define _initialized at the class level
 
-def init():
-    global station
-    global local_ap
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return  # Prevent re-initialization
+        self._initialized = True
+
+        self.station = WLAN(STA_IF)
+        self.station.active(True)
+        self.ap = WLAN(AP_IF)
+        self.ap.active(False)
+
+    def connect(self, timeout=10):
+        """Connect to a WiFi network."""
+        print("Scanning for available networks...")
+        available_networks = {n[0].decode(): n for n in self.station.scan()}
+
+        for ssid, credentials in NETWORKS:
+            if ssid in available_networks:
+                print(f"Connecting to {ssid}...")
+                self.station.connect(ssid, credentials)
+                for _ in range(timeout * 10):  # Wait for connection
+                    if self.station.isconnected():
+                        print(f"Connected to {ssid}")
+                        print(f"IP Address: {self.station.ifconfig()[0]}")
+                        return True
+                    sleep(0.1)
+                print(f"Failed to connect to {ssid}")
+        print("No known networks available.")
+        if USE_AP:
+            self.start_ap()
+        return False
+
+    def start_ap(self):
+        """Start the device as an access point."""
+        print("Starting access point...")
+        self.ap.active(True)
+        self.ap.config(essid="MyAP", password="password123")
+        print(f"Access point started with IP: {self.ap.ifconfig()[0]}")
+
+    def disconnect(self):
+        """Disconnect from the current WiFi network."""
+        if self.station.isconnected():
+            print("Disconnecting from WiFi...")
+            self.station.disconnect()
+            print("Disconnected.")
+
+    def is_connected(self):
+        """Check if the device is connected to WiFi."""
+        return self.station.isconnected()
+
     
-    station = WLAN(STA_IF)
-    local_ap = WLAN(AP_IF)
+    def deinit(self):
+        """Deactivate the WiFi station."""
+        if self.station.active():
+            self.station.active(False)
 
-def connectWiFi(sta):
-    if not sta.active():
-        sta.active(True)
-    
-    if waitForConnection(sta):
-        return True
-
-    aps = sta.scan()
-    aps.sort(key=lambda ap:ap[3], reverse=True)
-
-    for ap in aps:
-        for net in NETWORKS:
-            found = False
-            if ap[0].decode('UTF-8') == net[0]:
-                found = True
-            elif len(net) == 3:
-                for mac in net[2]:
-                    if hexlify(ap[1]).decode('UTF-8') == mac:
-                        found = True
-                        break
-
-            if found:
-                sta.connect(net[0], net[1])
-                if waitForConnection(sta):
-                    if USE_AP and local_ap.active():
-                        local_ap.active(False)
-                    return True
-
-    if USE_AP and not local_ap.active():
-        local_ap.active(True)
-
-    return False
-
-def deinit():
-    global station
-    global local_ap
-    
-    if station.active():
-        station.active(False)
-    
-    station = None
-    local_ap = None
-
-def waitForConnection(sta):
-    while sta.status() == STAT_CONNECTING:
-        sleep(0.25)
-
-    return sta.isconnected()
-
+# Create a singleton instance
+wifi_manager = WiFiManager()

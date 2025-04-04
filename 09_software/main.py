@@ -114,6 +114,7 @@
 #          platforms
 # 20250330 Added MQTT discovery messages
 # 20250402 Code improvements
+# 20250404 Changed wifi to Singleton class
 #
 # Backlog:
 # - fix MQTT over TLS
@@ -132,7 +133,7 @@ import binascii
 import time
 from time import sleep
 
-import wifi
+from wifi import wifi_manager
 import miflora
 from miflora import Mi_Flora
 import machine
@@ -189,7 +190,7 @@ def main():
     try:
         ntptime.settime()
     except OSError:
-        wifi.deinit()
+        wifi_manager.deinit()
         machine.reset()
 
     # Set time to Central European Time (CET) including daylight saving 
@@ -231,7 +232,7 @@ def main():
         if (ubatt.voltage < cfg.settings.battery_low) and (ubatt.voltage > 1000):
             del ubatt    
             del cfg.settings
-            wifi.deinit()
+            wifi_manager.deinit()
             print_line('Low voltage - entering deep sleep')
             machine.deepsleep(sleep_duration * 1000)
             while True:
@@ -553,7 +554,7 @@ def main():
                         del obj
                     del m_mqtt.mqtt_client
                     del cfg.settings
-                    wifi.deinit()
+                    wifi_manager.deinit()
                     #pin_mark.value(0)
                     machine.deepsleep(sleep_duration * 1000)
                     while True:
@@ -603,11 +604,11 @@ if __name__ == '__main__':
     if MEMINFO:
         meminfo('Boot begin')
 
-    wifi.init()
+    wifi_manager.init()
 
-    if wifi.connectWiFi(wifi.station):
+    if wifi_manager.connect():
         print_line("WiFi connection ready!", error=True)
-        print_line(f'Network config: {wifi.station.ifconfig()}')
+        print_line(f'Network config: {wifi_manager.station.ifconfig()}')
     else:
         print_line(f"Cannot connect to WiFi! Rebooting in {cfg.WLAN_RETRY_DELAY} seconds.")
         sleep(cfg.WLAN_RETRY_DELAY)
