@@ -33,12 +33,12 @@
 ###############################################################################
 
 import time
-import config as cfg
 from flora_mqtt import flora_mqtt 
 import pump as m_pump
 import sensor as m_sensor
 from print_line import print_line
-from config import VERBOSITY
+import config as cfg
+from config import config, VERBOSITY
 
 ###############################################################################
 # Irrigation class - Manual and automatic irrigation control
@@ -60,11 +60,11 @@ class Irrigation:
         # message callback function
         for i in range(2):
             if (m_pump.pumps[i].busy == cfg.PUMP_BUSY_MAN):
-                print_line('Running pump #{} for {:d} seconds -->'.format(i+1, cfg.settings.irr_duration_man),
+                print_line('Running pump #{} for {:d} seconds -->'.format(i+1, config.irr_duration_man),
                            console=True, sd_notify=True)
-                m_pump.pumps[i].power_on(cfg.settings.irr_duration_man)
+                m_pump.pumps[i].power_on(config.irr_duration_man)
                 m_pump.pumps[i].busy = 0
-                flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', str(0), qos = 1)
+                flora_mqtt.client.publish(config.base_topic_flora + '/man_irr_stat', str(0), qos = 1)
                 print_line('<-- Running pump #{} finished, Status: {}'.format(i+1, m_pump.pumps[i].status_str), 
                             console=True, sd_notify=True)
 
@@ -94,12 +94,12 @@ class Irrigation:
         """
         # Skip automatic irrigation during night time
         (yy, mm, dd, _, _, s, dow, doy) = time.localtime()
-        h = cfg.settings.night_begin_hr
-        m = cfg.settings.night_begin_min
+        h = config.night_begin_hr
+        m = config.night_begin_min
         nighttime_start = time.mktime((yy, mm, dd, h, m, s, dow, doy))
 
-        h = cfg.settings.night_end_hr
-        m = cfg.settings.night_end_min
+        h = config.night_end_hr
+        m = config.night_end_min
         nighttime_end = time.mktime((yy, mm, dd, h, m, s, dow, doy))
 
         now = time.mktime(time.localtime())
@@ -132,7 +132,7 @@ class Irrigation:
         schedule = [False, False]
         for p in range(2):
             if activate[p]:
-                if ((time.time() - m_pump.pumps[p].timestamp) < cfg.settings.irr_rest):
+                if ((time.time() - m_pump.pumps[p].timestamp) < config.irr_rest):
                     # All sensor values are within range, but time since last irrigation (irr_rest)
                     # has not expired yet -> bailing out
                     if (VERBOSITY > 1):
@@ -140,7 +140,7 @@ class Irrigation:
                     schedule[p] = True
                 elif (m_pump.pumps[p].busy == 0):
                     # Pump has not been started manually - ready!
-                    duration = cfg.settings.irr_duration_auto1 if (p == 0) else cfg.settings.irr_duration_auto2
+                    duration = config.irr_duration_auto1 if (p == 0) else config.irr_duration_auto2
                     print_line("Auto irrigation: running pump #{} for {:d} seconds"
                             .format(p+1, duration), console=True, sd_notify=True)
                     m_pump.pumps[p].busy = cfg.PUMP_BUSY_AUTO
