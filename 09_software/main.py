@@ -115,6 +115,7 @@
 # 20250330 Added MQTT discovery messages
 # 20250402 Code improvements
 # 20250404 Changed wifi to Singleton class
+#          Changed flora_mqtt to Singleton class
 #
 # Backlog:
 # - fix MQTT over TLS
@@ -151,7 +152,7 @@ else:
 # Flora specific modules
 import config as cfg
 from config import MEMINFO, VERBOSITY
-import flora_mqtt as m_mqtt
+from flora_mqtt import flora_mqtt
 from garbage_collect import gcollect, meminfo
 
 import irrigation as m_irrigation
@@ -314,14 +315,13 @@ def main():
             moisture[sensor] = m_moisture.Moisture(cfg.MOISTURE_ADC_PINS[i], cfg.MOISTURE_MIN_VAL, cfg.MOISTURE_MAX_VAL)
 
     # Init MQTT client
-    m_mqtt.MQTTClient.DEBUG = True
-    m_mqtt.mqtt_umqtt_init()
+    #m_mqtt.MQTTClient.DEBUG = True
+    #m_mqtt.mqtt_umqtt_init()
 
     # Mark2 MQTT init done
     # pin_mark.value(1)
 
-    m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
-                               qos=1, retain=True)
+    flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "online", qos=1, retain=True)
 
 #    if MEMINFO:    
 #        meminfo('MQTTClient')
@@ -335,8 +335,8 @@ def main():
 
         for sensor in s.sensors:
             while not s.sensors[sensor].valid:
-                m_mqtt.mqtt_client.check_msg()
-                m_mqtt.mqtt_client.ping()
+                flora_mqtt.client.check_msg()
+                flora_mqtt.client.ping()
                 sleep(1)
             if (VERBOSITY > 1):
                 print_line(sensor + ' ready!', sd_notify=True)
@@ -344,9 +344,9 @@ def main():
         print_line('<-- Initial reception of MQTT sensor data succeeded.', sd_notify=True)
     
     for sensor in s.sensors:
-        m_mqtt.publish_discovery_sensor(s.sensors[sensor].name)
+        flora_mqtt.client.publish_discovery_sensor(s.sensors[sensor].name)
 
-    m_mqtt.publish_discovery_sensor("tank")
+    flora_mqtt.client.publish_discovery_sensor("tank")
     
     meminfo('Start Main Loop')
 
@@ -359,7 +359,7 @@ def main():
     while (True):
         # Mark3 Main Loop
         # pin_mark.value(0)
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "online",
                                    qos=1, retain=True)
         gcollect()
 
@@ -368,21 +368,21 @@ def main():
         #       we just cross fingers that our connection is good...
         # At this point in the code you must consider how to handle
         # connection errors.  And how often to resume the connection.
-        if cfg.settings.mqtt_tls == False and m_mqtt.mqtt_client.is_conn_issue():
-            if m_mqtt.mqtt_client.is_conn_issue():
+        if cfg.settings.mqtt_tls == False and flora_mqtt.client.is_conn_issue():
+            if flora_mqtt.client.is_conn_issue():
                 # If the connection is successful, the is_conn_issue
                 # method will not return a connection error.
-                m_mqtt.mqtt_client.reconnect()
+                flora_mqtt.client.reconnect()
             else:
-                m_mqtt.mqtt_client.resubscribe()
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
+                flora_mqtt.client.resubscribe()
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "online",
                                     qos=1, retain=True)
 
         for _ in range(cfg.MQTT_MAX_CYCLES):
             # While Eclipse Paho maintains a network handler loop,
             # uMQTT network services have to be handled manually
-            m_mqtt.mqtt_client.check_msg()
-            m_mqtt.mqtt_client.send_queue()
+            flora_mqtt.client.check_msg()
+            flora_mqtt.client.send_queue()
             time.sleep_ms(500) # pylint: disable=E1101
         # END FIXME
 
@@ -398,7 +398,7 @@ def main():
                     data = {}
                     data['moisture'] = moist_val
                     json_data = json.dumps(data)
-                    m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/' + sensor, json_data,
+                    flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/' + sensor, json_data,
                                                qos = 1, retain=cfg.MQTT_DATA_RETAIN)
                     print_line(f"{sensor} - Moisture: {moist_val}%")
                 else:
@@ -428,7 +428,7 @@ def main():
                             print_line(f"Temperature: {miflora_ble.temp}°C Light: {miflora_ble.light}lx " + \
                                        f"Moisture: {miflora_ble.moist}% Conductivity: {miflora_ble.cond}µS/cm")
                             s.sensors[sensor].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
-                            m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/' + sensor, s.sensors[sensor].data,
+                            flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/' + sensor, s.sensors[sensor].data,
                                                     qos = 1, retain=cfg.MQTT_DATA_RETAIN)
                             break
                         else:
@@ -457,8 +457,8 @@ def main():
                     for sensor in s.sensors:
                         s.sensors[sensor].update_temperature_sensor(temp)
                 print_line(f"DS1820 - Temperature: {temp}°C")
-                m_mqtt.publish_discovery_sensor("temperature")
-                m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/temperature',
+                flora_mqtt.publish_discovery_sensor("temperature")
+                flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/temperature',
                                          f'{temp:2.1f}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
             del temperature
             gcollect()
@@ -467,19 +467,19 @@ def main():
         if cfg.settings.weather_sensor:
             valid, weather = m_weather.weather_data()
             if (valid):
-                m_mqtt.publish_discovery_sensor("weather")
+                flora_mqtt.publish_discovery_sensor("weather")
                 print_line(f'Weather sensor - Temperature: {weather["temperature"]}°C, Humidity: {weather["humidity"]}%, ' + \
                            f'Pressure: {weather["pressure"]}hPa')
                 weather_data = json.dumps(weather)
-                m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/weather', weather_data,
+                flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/weather', weather_data,
                                          qos = 1, retain=cfg.MQTT_DATA_RETAIN)
 
         if cfg.settings.battery_voltage:
             ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
             ubatt.atten(machine.ADC.ATTN_6DB)
             print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
-            m_mqtt.publish_discovery_sensor("ubatt")
-            m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/ubatt', 
+            flora_mqtt.publish_discovery_sensor("ubatt")
+            flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/ubatt', 
                                      f'{ubatt.voltage}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
 
         gcollect()
@@ -490,23 +490,23 @@ def main():
         system = report.gen_report()
         del report
 
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/system', system, qos = 1, retain=True)
-        m_mqtt.mqtt_client.send_queue()
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/system', system, qos = 1, retain=True)
+        flora_mqtt.client.send_queue()
 
         # Publish status flags/values
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/auto_irr_stat', '1' if cfg.settings.auto_irrigation else '0',
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/auto_irr_stat', '1' if cfg.settings.auto_irrigation else '0',
                                    qos = 1, retain=True)
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', str(cfg.settings.irr_duration_man), 
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', str(cfg.settings.irr_duration_man), 
                                    qos = 1, retain=True)
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/tank', str(m_tank.tank.status), 
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/tank', str(m_tank.tank.status), 
                                    qos = 1, retain=True)
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/sleep_dis_stat', '0' if cfg.settings.deep_sleep else '1', 
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/sleep_dis_stat', '0' if cfg.settings.deep_sleep else '1', 
                                    qos = 1, retain=True)
 
         # Execute manual irrigation (if requested)
         irrigation.man_irrigation()
 
-        m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', '0', qos = 1)
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', '0', qos = 1)
 
         # Execute automatic irrigation
         if (cfg.settings.auto_irrigation):
@@ -517,8 +517,8 @@ def main():
         for _ in range(cfg.MQTT_MAX_CYCLES):
             # While Eclipse Paho maintains a network handler loop,
             # uMQTT network services have to be handles manually
-            m_mqtt.mqtt_client.check_msg()
-            m_mqtt.mqtt_client.send_queue()
+            flora_mqtt.client.check_msg()
+            flora_mqtt.client.send_queue()
             time.sleep_ms(500) # pylint: disable=E1101
 
         if (VERBOSITY > 1):
@@ -535,12 +535,12 @@ def main():
                 # to simplify debugging/flashing 
                 if (cfg.settings.deep_sleep and ubatt.voltage > 1000):
                     print_line(f'Entering deep sleep in 5 seconds, will wake up after {cfg.settings.processing_period} seconds ...')
-                    m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "offline",
+                    flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "offline",
                                             qos = 1, retain=True)
                     sleep(2)
-                    m_mqtt.mqtt_client.check_msg()
-                    m_mqtt.mqtt_client.send_queue()
-                    m_mqtt.mqtt_client.disconnect()
+                    flora_mqtt.client.check_msg()
+                    flora_mqtt.client.send_queue()
+                    flora_mqtt.client.disconnect()
                     sleep(3)
                     del sensor_power
                     del m_tank.tank
@@ -552,7 +552,7 @@ def main():
                         pass
                     for obj in s.sensors:
                         del obj
-                    del m_mqtt.mqtt_client
+                    del flora_mqtt.client
                     del cfg.settings
                     wifi_manager.deinit()
                     #pin_mark.value(0)
@@ -564,9 +564,9 @@ def main():
             if (VERBOSITY > 0):
                 print_line(f'Standby ({cfg.settings.processing_period} seconds) ...')
 
-            m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "idle",
+            flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "idle",
                                        qos = 1, retain=True)
-            m_mqtt.mqtt_client.send_queue()
+            flora_mqtt.client.send_queue()
 
             # Sleep for <processing_period> seconds
             count = 0
@@ -578,19 +578,19 @@ def main():
 
                 # While Eclipse Paho maintains a network handler loop,
                 # uMQTT network services have to be handles manually
-                m_mqtt.mqtt_client.check_msg()
+                flora_mqtt.client.check_msg()
                 if (count == cfg.settings.mqtt_keepalive):
                     count = 0
-                    m_mqtt.mqtt_client.ping()
+                    flora_mqtt.client.ping()
                 else:
                     count += 1
                 sleep(1)
         else:
-            m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "offline",
+            flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "offline",
                                        qos = 1, retain=True)
-            m_mqtt.mqtt_client.send_queue()
+            flora_mqtt.client.send_queue()
             print_line('Finished in non-daemon-mode', sd_notify=True)
-            m_mqtt.mqtt_client.disconnect()
+            flora_mqtt.client.disconnect()
             break
 
 
