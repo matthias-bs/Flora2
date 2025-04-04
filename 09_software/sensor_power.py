@@ -50,10 +50,10 @@ class SensorPower:
         self.p_power = pin_sensor_power
         self.status = 0
         if sys.platform == "esp32":
-            self.pin_power = Pin(self.p_power, Pin.OUT, value = 0) # pylint: disable=E0606
+            self.pin_power = Pin(self.p_power, Pin.OUT, value = 0) # pylint: disable=unknown-option-value
         else:
-            GPIO.setup(self.p_power, GPIO.OUT) # pylint: disable=E0606
-            GPIO.output(self.p_power, GPIO.LOW) # pylint: disable=E0606
+            GPIO.setup(self.p_power, GPIO.OUT) # pylint: disable=unknown-option-value
+            GPIO.output(self.p_power, GPIO.LOW) # pylint: disable=unknown-option-value
             
         self.name = name
 
@@ -68,7 +68,7 @@ class SensorPower:
         if sys.platform == "esp32":
             self.pin_power.value(power)
         else:
-            GPIO.output(self.p_power, power) # pylint: disable=E0606
+            GPIO.output(self.p_power, power) # pylint: disable=unknown-option-value
 
 #    def __str__(self):
 #        return ("{}Pin# driver control: {:2}, Pin# driver status: {:2}, Status: {:>10}"
