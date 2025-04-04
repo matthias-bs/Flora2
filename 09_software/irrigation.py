@@ -25,6 +25,7 @@
 # 20210605 Added support of 2nd pump
 # 20210709 Bugfixes
 # 20250402 Code improvements
+# 20250404 Updated MQTT interface
 #
 # Backlog:
 # - 
@@ -33,7 +34,7 @@
 
 import time
 import config as cfg
-import flora_mqtt as mqtt
+from flora_mqtt import flora_mqtt 
 import pump as m_pump
 import sensor as m_sensor
 from print_line import print_line
@@ -63,7 +64,7 @@ class Irrigation:
                            console=True, sd_notify=True)
                 m_pump.pumps[i].power_on(cfg.settings.irr_duration_man)
                 m_pump.pumps[i].busy = 0
-                mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', str(0), qos = 1)
+                flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', str(0), qos = 1)
                 print_line('<-- Running pump #{} finished, Status: {}'.format(i+1, m_pump.pumps[i].status_str), 
                             console=True, sd_notify=True)
 
