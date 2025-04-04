@@ -28,6 +28,7 @@
 # 20210605 Changed global integer valiable <pump> to list <pumps>
 # 20210609 Added property <state>
 # 20250402 Code improvements
+# 20250404 Updated MQTT keepalive handling
 #
 # Backlog:
 # - Check/modify driver status for BTS117
@@ -37,7 +38,7 @@
 import sys
 from time import sleep
 
-import flora_mqtt as mqtt
+from flora_mqtt import flora_mqtt
 import config as cfg
 
 if sys.implementation.name == "micropython":
@@ -164,7 +165,7 @@ class Pump:
             if sys.implementation.name == "micropython":
                 if count == cfg.settings.mqtt_keepalive:
                     count = 0
-                    mqtt.mqtt_client.ping()
+                    flora_mqtt.client.ping()
                 else:
                     count += 1
 
