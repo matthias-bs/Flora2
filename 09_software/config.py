@@ -32,6 +32,7 @@
 #          real sensor output voltage in mV
 # 20250306 Removed Removed alert/report/email configuration
 # 20240403 Code quality improvements
+# 20250404 Changed Settings to Config class and added singleton pattern
 #
 # Backlog:
 # - 
@@ -114,16 +115,20 @@ VREF                 = None                # V_ref in mV or None for eFuse calib
 UBATT_SAMPLES        = const(10)           # no. of samples for averaging
 
 
-##############################################################################
-# Global variables
-##############################################################################
-settings = None
-
-
 ###############################################################################
-# Settings class - Global settings from config file, MQTT messages and others
+# Config class - Global settings from config file - MQTT messages and others
 ###############################################################################
-class Settings (ConfigParser):
+class Config (ConfigParser):
+    """
+    Configuration (Singleton) class for Flora2
+    """
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(Config, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self, _config_dir, delimiters, inline_comment_prefixes):
         super().__init__(delimiters=delimiters, inline_comment_prefixes=inline_comment_prefixes)
         self.irr_scheduled = [False, False]
@@ -182,3 +187,4 @@ class Settings (ConfigParser):
 
         self.cp = cp
 
+config = Config('./', delimiters=('=', ), inline_comment_prefixes=('#'))
