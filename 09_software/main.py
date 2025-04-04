@@ -151,7 +151,7 @@ else:
 
 # Flora specific modules
 import config as cfg
-from config import MEMINFO, VERBOSITY
+from config import config, MEMINFO, VERBOSITY
 from flora_mqtt import flora_mqtt
 from garbage_collect import gcollect, meminfo
 
@@ -207,32 +207,27 @@ def main():
     if MEMINFO:
         meminfo('__main__ gc')
 
-    config_dir = './'
-
     # Intro
     print(cfg.PROJECT_NAME)
     print(cfg.PROJECT_VERSION)
     print(cfg.PROJECT_BUILD)
     print('Source:', cfg.PROJECT_URL)
 
-    # Initialize settings
-    cfg.settings = cfg.Settings(config_dir, delimiters=('=', ), inline_comment_prefixes=('#'))
-
-    if cfg.settings.battery_voltage:
+    if config.battery_voltage:
         ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated") # pylint: disable=E0601
         ubatt.atten(machine.ADC.ATTN_6DB)
         print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
 
         # First energy saving level: switch to processing_period2
-        if (ubatt.voltage < cfg.settings.battery_weak):
-            sleep_duration = cfg.settings.processing_period2
+        if (ubatt.voltage < config.battery_weak):
+            sleep_duration = config.processing_period2
         else:
-            sleep_duration = cfg.settings.processing_period
+            sleep_duration = config.processing_period
 
         # Second energy saving level: immediately go to sleep
-        if (ubatt.voltage < cfg.settings.battery_low) and (ubatt.voltage > 1000):
+        if (ubatt.voltage < config.battery_low) and (ubatt.voltage > 1000):
             del ubatt
-            del cfg.settings
+            #del config
             wifi_manager.deinit()
             print_line('Low voltage - entering deep sleep')
             machine.deepsleep(sleep_duration * 1000)
@@ -259,7 +254,7 @@ def main():
 
 
     # Get list of sensor names from config file
-    sensor_list = cfg.settings.plant_sensors
+    sensor_list = config.plant_sensors
     sensor_list = sensor_list.split(',')
 
     if (sensor_list == []):
@@ -272,9 +267,9 @@ def main():
     gcollect()
 
     for sensor in sensor_list:
-        s.sensors[sensor] = s.Sensor(sensor, cfg.settings.mqtt_msg_timeout, cfg.settings.sensor_batt_low)
+        s.sensors[sensor] = s.Sensor(sensor, config.mqtt_msg_timeout, config.sensor_batt_low)
         # check if config file contains a section for this sensor
-        if (not(cfg.settings.cp.has_section(sensor))):
+        if (not(config.cp.has_section(sensor))):
             print_line(f'The configuration file "config.ini" has a sensor named {sensor} in the [Sensors] section,',
                        error=True, sd_notify=True)
             print_line('but no plant data has been provided in a section named accordingly.',
@@ -292,19 +287,19 @@ def main():
 
         s.sensors[sensor].init_plant()
 
-        if (cfg.settings.sensor_interface == 'ble'):
-            addr = cfg.settings.cp.get(sensor, 'address')
+        if (config.sensor_interface == 'ble'):
+            addr = config.cp.get(sensor, 'address')
             addr = addr.replace(':', '')
             addr = binascii.unhexlify(addr)
             s.sensors[sensor].address = bytes(addr, "utf-8")
 
         # Remove section from memory allocated by ConfigParser
-        cfg.settings.cp.remove_section(sensor)
-    del cfg.settings.cp
+        config.cp.remove_section(sensor)
+    del config.cp
     gcollect()
 
     # Local (analog) moisture sensor interface
-    if (cfg.settings.sensor_interface == 'local'):
+    if (config.sensor_interface == 'local'):
         if (len(sensor_list) > len(cfg.MOISTURE_ADC_PINS)):
             print_line('Configured number sensors exceeds number of analog inputs (MOISTURE_ADC_PINS) in config.py',
                     error=True, sd_notify=True)
@@ -321,7 +316,7 @@ def main():
     # Mark2 MQTT init done
     # pin_mark.value(1)
 
-    flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "online", qos=1, retain=True)
+    flora_mqtt.client.publish(config.base_topic_flora + '/status', "online", qos=1, retain=True)
 
 #    if MEMINFO:
 #        meminfo('MQTTClient')
@@ -329,7 +324,7 @@ def main():
     # Initialize irrigation
     irrigation = m_irrigation.Irrigation()
 
-    if cfg.settings.sensor_interface == 'mqtt':
+    if config.sensor_interface == 'mqtt':
         # Wait until MQTT data is valid (this may take a while...)
         print_line('Waiting for MQTT sensor data -->', sd_notify=True)
 
@@ -359,7 +354,7 @@ def main():
     while (True):
         # Mark3 Main Loop
         # pin_mark.value(0)
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "online",
+        flora_mqtt.client.publish(config.base_topic_flora + '/status', "online",
                                    qos=1, retain=True)
         gcollect()
 
@@ -368,14 +363,14 @@ def main():
         #       we just cross fingers that our connection is good...
         # At this point in the code you must consider how to handle
         # connection errors.  And how often to resume the connection.
-        if cfg.settings.mqtt_tls == False and flora_mqtt.client.is_conn_issue():
+        if config.mqtt_tls == False and flora_mqtt.client.is_conn_issue():
             if flora_mqtt.client.is_conn_issue():
                 # If the connection is successful, the is_conn_issue
                 # method will not return a connection error.
                 flora_mqtt.client.reconnect()
             else:
                 flora_mqtt.client.resubscribe()
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "online",
+        flora_mqtt.client.publish(config.base_topic_flora + '/status', "online",
                                     qos=1, retain=True)
 
         for _ in range(cfg.MQTT_MAX_CYCLES):
@@ -390,7 +385,7 @@ def main():
             sensor_power.enable(True)
             sleep(1)
 
-        if (cfg.settings.sensor_interface == 'local'):
+        if (config.sensor_interface == 'local'):
             for sensor in sensor_list:
                 valid, moist_val = moisture[sensor].moisture
                 if (valid):
@@ -398,7 +393,7 @@ def main():
                     data = {}
                     data['moisture'] = moist_val
                     json_data = json.dumps(data)
-                    flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/' + sensor, json_data,
+                    flora_mqtt.client.publish(config.base_topic_flora + '/' + sensor, json_data,
                                                qos = 1, retain=cfg.MQTT_DATA_RETAIN)
                     print_line(f"{sensor} - Moisture: {moist_val}%")
                 else:
@@ -407,7 +402,7 @@ def main():
 
         # Mark4 BLE start
         # pin_mark.value(1)
-        if (cfg.settings.sensor_interface == 'ble'):
+        if (config.sensor_interface == 'ble'):
             try:
                 ble = BLE()
                 miflora_ble = Mi_Flora(ble)
@@ -428,7 +423,7 @@ def main():
                             print_line(f"Temperature: {miflora_ble.temp}°C Light: {miflora_ble.light}lx " + \
                                        f"Moisture: {miflora_ble.moist}% Conductivity: {miflora_ble.cond}µS/cm")
                             s.sensors[sensor].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
-                            flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/' + sensor, s.sensors[sensor].data,
+                            flora_mqtt.client.publish(config.base_topic_flora + '/' + sensor, s.sensors[sensor].data,
                                                     qos = 1, retain=cfg.MQTT_DATA_RETAIN)
                             break
                         else:
@@ -448,38 +443,38 @@ def main():
         #pin_mark.value(0)
 
         # Read temperature sensor (optional)
-        if cfg.settings.temperature_sensor:
+        if config.temperature_sensor:
             temperature = m_temperature.Temperature(cfg.GPIO_TEMP_SENS)
             if (temperature.devices > 0):
                 temp = temperature.temperature()
                 #temperature.show_devices()
-                if (cfg.settings.sensor_interface == 'local'):
+                if (config.sensor_interface == 'local'):
                     for sensor in s.sensors:
                         s.sensors[sensor].update_temperature_sensor(temp)
                 print_line(f"DS1820 - Temperature: {temp}°C")
                 flora_mqtt.publish_discovery_sensor("temperature")
-                flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/temperature',
+                flora_mqtt.client.publish(config.base_topic_flora + '/temperature',
                                          f'{temp:2.1f}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
             del temperature
             gcollect()
 
         # Read weather sensor (optional)
-        if cfg.settings.weather_sensor:
+        if config.weather_sensor:
             valid, weather = m_weather.weather_data()
             if (valid):
                 flora_mqtt.publish_discovery_sensor("weather")
                 print_line(f'Weather sensor - Temperature: {weather["temperature"]}°C, Humidity: {weather["humidity"]}%, ' + \
                            f'Pressure: {weather["pressure"]}hPa')
                 weather_data = json.dumps(weather)
-                flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/weather', weather_data,
+                flora_mqtt.client.publish(config.base_topic_flora + '/weather', weather_data,
                                          qos = 1, retain=cfg.MQTT_DATA_RETAIN)
 
-        if cfg.settings.battery_voltage:
+        if config.battery_voltage:
             ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
             ubatt.atten(machine.ADC.ATTN_6DB)
             print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
             flora_mqtt.publish_discovery_sensor("ubatt")
-            flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/ubatt',
+            flora_mqtt.client.publish(config.base_topic_flora + '/ubatt',
                                      f'{ubatt.voltage}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
 
         gcollect()
@@ -490,27 +485,27 @@ def main():
         system = report.gen_report()
         del report
 
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/system', system, qos = 1, retain=True)
+        flora_mqtt.client.publish(config.base_topic_flora + '/system', system, qos = 1, retain=True)
         flora_mqtt.client.send_queue()
 
         # Publish status flags/values
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/auto_irr_stat', '1' if cfg.settings.auto_irrigation else '0',
+        flora_mqtt.client.publish(config.base_topic_flora + '/auto_irr_stat', '1' if config.auto_irrigation else '0',
                                    qos = 1, retain=True)
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', str(cfg.settings.irr_duration_man),
+        flora_mqtt.client.publish(config.base_topic_flora + '/man_irr_duration_stat', str(config.irr_duration_man),
                                    qos = 1, retain=True)
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/tank', str(m_tank.tank.status),
+        flora_mqtt.client.publish(config.base_topic_flora + '/tank', str(m_tank.tank.status),
                                    qos = 1, retain=True)
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/sleep_dis_stat', '0' if cfg.settings.deep_sleep else '1',
+        flora_mqtt.client.publish(config.base_topic_flora + '/sleep_dis_stat', '0' if config.deep_sleep else '1',
                                    qos = 1, retain=True)
 
         # Execute manual irrigation (if requested)
         irrigation.man_irrigation()
 
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', '0', qos = 1)
+        flora_mqtt.client.publish(config.base_topic_flora + '/man_irr_stat', '0', qos = 1)
 
         # Execute automatic irrigation
-        if (cfg.settings.auto_irrigation):
-            cfg.settings.irr_scheduled = irrigation.auto_irrigation()
+        if (config.auto_irrigation):
+            config.irr_scheduled = irrigation.auto_irrigation()
 
         gcollect()
 
@@ -527,15 +522,15 @@ def main():
                            f"°C Conductivity: {s.sensors[sensor].cond:4d} uS/cm Light: {s.sensors[sensor].light:6d} " + \
                            f"lx Battery: {s.sensors[sensor].batt:3d} %")
 
-        if (cfg.settings.daemon_enabled):
+        if (config.daemon_enabled):
             if (sys.platform == "esp32"):
                 sensor_power.enable(False)
 
                 # Prevent deep sleep if battery voltage input is disconnected
                 # to simplify debugging/flashing
-                if (cfg.settings.deep_sleep and ubatt.voltage > 1000):
-                    print_line(f'Entering deep sleep in 5 seconds, will wake up after {cfg.settings.processing_period} seconds ...')
-                    flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "offline",
+                if (config.deep_sleep and ubatt.voltage > 1000):
+                    print_line(f'Entering deep sleep in 5 seconds, will wake up after {config.processing_period} seconds ...')
+                    flora_mqtt.client.publish(config.base_topic_flora + '/status', "offline",
                                             qos = 1, retain=True)
                     sleep(2)
                     flora_mqtt.client.check_msg()
@@ -553,7 +548,6 @@ def main():
                     for obj in s.sensors:
                         del obj
                     del flora_mqtt.client
-                    del cfg.settings
                     wifi_manager.deinit()
                     #pin_mark.value(0)
                     machine.deepsleep(sleep_duration * 1000)
@@ -562,15 +556,15 @@ def main():
                         pass
 
             if (VERBOSITY > 0):
-                print_line(f'Standby ({cfg.settings.processing_period} seconds) ...')
+                print_line(f'Standby ({config.processing_period} seconds) ...')
 
-            flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "idle",
+            flora_mqtt.client.publish(config.base_topic_flora + '/status', "idle",
                                        qos = 1, retain=True)
             flora_mqtt.client.send_queue()
 
             # Sleep for <processing_period> seconds
             count = 0
-            for _ in range(cfg.settings.processing_period):
+            for _ in range(config.processing_period):
                 # Quit sleeping if flag has been set (asynchronously) in 'mqtt_man_irr_cmd'
                 # message callback function
                 if (m_pump.pumps[0].busy or m_pump.pumps[1].busy):
@@ -579,14 +573,14 @@ def main():
                 # While Eclipse Paho maintains a network handler loop,
                 # uMQTT network services have to be handles manually
                 flora_mqtt.client.check_msg()
-                if (count == cfg.settings.mqtt_keepalive):
+                if (count == config.mqtt_keepalive):
                     count = 0
                     flora_mqtt.client.ping()
                 else:
                     count += 1
                 sleep(1)
         else:
-            flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "offline",
+            flora_mqtt.client.publish(config.base_topic_flora + '/status', "offline",
                                        qos = 1, retain=True)
             flora_mqtt.client.send_queue()
             print_line('Finished in non-daemon-mode', sd_notify=True)

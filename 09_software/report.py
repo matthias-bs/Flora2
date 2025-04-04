@@ -36,7 +36,7 @@
 
 import json
 
-import config as m_config
+from config import config
 import pump as m_pump
 import sensor as m_sensor
 import tank as m_tank
@@ -115,7 +115,7 @@ class Report:
             if s.valid:
                 self.data[s.name]['status'] = {}
                 self.data[s.name]['status']['batt_ul'] = s.batt_ul
-                if m_config.settings.temperature_sensor:
+                if config.temperature_sensor:
                     self.data[s.name]['status']['temp_ul'] = s.temp_ul
                     self.data[s.name]['status']['temp_oh'] = s.temp_oh
                 
@@ -136,8 +136,8 @@ class Report:
         for i in range(2):
             if (m_pump.pumps[i].timestamp != 0):
                 last_irrigation = self.date_time_str(localtime(m_pump.pumps[i].timestamp))
-                next_irrigation = self.date_time_str(localtime(m_pump.pumps[i].timestamp + m_config.settings.irr_rest))
-                scheduled = m_config.settings.irr_scheduled[i]
+                next_irrigation = self.date_time_str(localtime(m_pump.pumps[i].timestamp + config.irr_rest))
+                scheduled = config.irr_scheduled[i]
                 self.data['irrigation'].append({'last': last_irrigation, 'next': next_irrigation, 'scheduled': scheduled})
 
         self.data['pump'] = []
@@ -158,10 +158,10 @@ class Report:
         Add system settings to report.
         """
         self.data['irrigation'] = {}
-        self.data['irrigation']['auto_enabled'] = m_config.settings.auto_irrigation
+        self.data['irrigation']['auto_enabled'] = config.auto_irrigation
         self.data['irrigation']['auto_duration'] = []
-        self.data['irrigation']['auto_duration'].append(m_config.settings.irr_duration_auto1)
-        self.data['irrigation']['auto_duration'].append(m_config.settings.irr_duration_auto2)
-        self.data['irrigation']['man_duration'] = m_config.settings.irr_duration_man
-        self.data['irrigation']['auto_rest'] = m_config.settings.irr_rest
+        self.data['irrigation']['auto_duration'].append(config.irr_duration_auto1)
+        self.data['irrigation']['auto_duration'].append(config.irr_duration_auto2)
+        self.data['irrigation']['man_duration'] = config.irr_duration_man
+        self.data['irrigation']['auto_rest'] = config.irr_rest
         self.data['irrigation']['auto_max_light'] = self.min_light_irr

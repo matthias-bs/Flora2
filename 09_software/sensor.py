@@ -35,7 +35,7 @@ from time import time
 from print_line import print_line
 
 import json
-import config as m_config
+from config import config
 
 ##############################################################################
 # Global variables
@@ -56,15 +56,15 @@ def config_error(sensor):
                 'light_min',
                 'light_irr',
                 'light_max']:
-        if not m_config.settings.cp.has_option(sensor, option):
+        if not config.cp.has_option(sensor, option):
             print_line('The configuration file "config.ini" has a section "[' + sensor + ']",',
                        error=True, sd_notify=True)
             print_line('but the key "' + option + '" is missing.',
                        error=True, sd_notify=True)
             return True
     
-    if m_config.settings.sensor_interface == 'ble':
-        if not m_config.settings.cp.has_option(sensor, 'address'):                
+    if config.sensor_interface == 'ble':
+        if not config.cp.has_option(sensor, 'address'):                
             print_line('The configured plant sensor interface is Bluetooth LE,')
             print_line('the configuration file "config.ini" has a section "[' + sensor + ']",',
                         error=True, sd_notify=True)
@@ -173,19 +173,19 @@ class Sensor:
         Initialize plant data
         """
         sensor = self.name
-        self.plant     = m_config.settings.cp.get(sensor, 'name')
-        self.pump      = m_config.settings.cp.getint(sensor, 'pump')
-        self.temp_min  = m_config.settings.cp.getfloat(sensor, 'temp_min')
-        self.temp_max  = m_config.settings.cp.getfloat(sensor, 'temp_max')
-        self.cond_min  = m_config.settings.cp.getint(sensor, 'cond_min')
-        self.cond_max  = m_config.settings.cp.getint(sensor, 'cond_max')
-        self.moist_min = m_config.settings.cp.getint(sensor, 'moist_min')
-        self.moist_lo  = m_config.settings.cp.getint(sensor, 'moist_lo')       
-        self.moist_hi  = m_config.settings.cp.getint(sensor, 'moist_hi')
-        self.moist_max = m_config.settings.cp.getint(sensor, 'moist_max')
-        self.light_min = m_config.settings.cp.getint(sensor, 'light_min')
-        self.light_irr = m_config.settings.cp.getint(sensor, 'light_irr')
-        self.light_max = m_config.settings.cp.getint(sensor, 'light_max')
+        self.plant     = config.cp.get(sensor, 'name')
+        self.pump      = config.cp.getint(sensor, 'pump')
+        self.temp_min  = config.cp.getfloat(sensor, 'temp_min')
+        self.temp_max  = config.cp.getfloat(sensor, 'temp_max')
+        self.cond_min  = config.cp.getint(sensor, 'cond_min')
+        self.cond_max  = config.cp.getint(sensor, 'cond_max')
+        self.moist_min = config.cp.getint(sensor, 'moist_min')
+        self.moist_lo  = config.cp.getint(sensor, 'moist_lo')       
+        self.moist_hi  = config.cp.getint(sensor, 'moist_hi')
+        self.moist_max = config.cp.getint(sensor, 'moist_max')
+        self.light_min = config.cp.getint(sensor, 'light_min')
+        self.light_irr = config.cp.getint(sensor, 'light_irr')
+        self.light_max = config.cp.getint(sensor, 'light_max')
 
 
     @property

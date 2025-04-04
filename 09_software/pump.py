@@ -39,7 +39,7 @@ import sys
 from time import sleep
 
 from flora_mqtt import flora_mqtt
-import config as cfg
+from config import config
 
 if sys.implementation.name == "micropython":
     from machine import Pin
@@ -163,7 +163,7 @@ class Pump:
                 self.status = 1
                 break
             if sys.implementation.name == "micropython":
-                if count == cfg.settings.mqtt_keepalive:
+                if count == config.mqtt_keepalive:
                     count = 0
                     flora_mqtt.client.ping()
                 else:
