@@ -45,17 +45,12 @@ from umqtt.robust2 import MQTTClient
 import machine
 import binascii
 
-import config as cfg
+#import config as cfg
+from config import config
 import sensor as s
 #from time import sleep_ms
 from config import VERBOSITY, PUMP_BUSY_MAN
 from print_line import print_line
-
-
-##############################################################################
-# Global variables
-##############################################################################
-mqtt_client = None
 
 
 #############################################################################################
@@ -100,24 +95,24 @@ class FloraMQTT:
 
         unique_id = binascii.hexlify(machine.unique_id()).decode("ascii")
         
-        if cfg.settings.mqtt_tls:
-            with open(cfg.settings.mqtt_ca_cert, "r", encoding='utf-8') as f:
+        if config.mqtt_tls:
+            with open(config.mqtt_ca_cert, "r", encoding='utf-8') as f:
                 cert = f.read()
         else:
             cert = None
 
         try:
-            self.client = MQTTClient(client_id=(cfg.settings.base_topic_flora + unique_id),
-                                    server=cfg.settings.mqtt_server,
-                                    port=cfg.settings.mqtt_port,
-                                    user=cfg.settings.mqtt_user,
-                                    password=cfg.settings.mqtt_password,
-                                    keepalive=cfg.settings.mqtt_keepalive,
-                                    socket_timeout=40 if cfg.settings.mqtt_tls else 6,
-                                    ssl=cfg.settings.mqtt_tls,
+            self.client = MQTTClient(client_id=(config.base_topic_flora + unique_id),
+                                    server=config.mqtt_server,
+                                    port=config.mqtt_port,
+                                    user=config.mqtt_user,
+                                    password=config.mqtt_password,
+                                    keepalive=config.mqtt_keepalive,
+                                    socket_timeout=40 if config.mqtt_tls else 6,
+                                    ssl=config.mqtt_tls,
                                     ssl_params={"cert":cert,"server_side":False},
             )
-            self.client.set_last_will(cfg.settings.base_topic_flora + '/status', "dead", qos=1, retain=True)
+            self.client.set_last_will(config.base_topic_flora + '/status', "dead", qos=1, retain=True)
             
             # BEGIN FIXME
             print_line('Connecting to MQTT broker -->')
@@ -148,7 +143,7 @@ class FloraMQTT:
         """
         uMQTT sub message callback
         
-        Uses global vars <cfg.settings> and <mqtt_client>!!!
+        Uses global vars <config> and <mqtt_client>!!!
 
         Parameters:
             topic (bytes):  MQTT message topic
@@ -163,13 +158,13 @@ class FloraMQTT:
         
         message = MQTTMessage(topic, msg)
         
-        if (topic == cfg.settings.base_topic_flora + '/man_irr_cmd'):
+        if (topic == config.base_topic_flora + '/man_irr_cmd'):
             self.mqtt_man_irr_cmd(self.client, None, message)
-        elif (topic == cfg.settings.base_topic_flora + '/man_irr_duration_ctrl'):
+        elif (topic == config.base_topic_flora + '/man_irr_duration_ctrl'):
             self.mqtt_man_irr_duration_ctrl(self.client, None, message)
-        elif (topic == cfg.settings.base_topic_flora + '/auto_irr_ctrl'):
+        elif (topic == config.base_topic_flora + '/auto_irr_ctrl'):
             self.mqtt_auto_irr_ctrl(self.client, None, message)
-        elif (topic == cfg.settings.base_topic_flora + '/sleep_dis_ctrl'):
+        elif (topic == config.base_topic_flora + '/sleep_dis_ctrl'):
             self.mqtt_sleep_dis_ctrl(self.client, None, message)
         else:
             self.mqtt_on_message(self.client, None, message)
@@ -182,8 +177,8 @@ class FloraMQTT:
         Parameters:
             name (string): sensor name (same as data topic)
         """
-        state_topic = f"{cfg.settings.base_topic_flora}/{name}"
-        sensor_name = f"{cfg.settings.base_topic_flora}_{name}"
+        state_topic = f"{config.base_topic_flora}/{name}"
+        sensor_name = f"{config.base_topic_flora}_{name}"
         
         if name == "temperature":
             sensors = [
@@ -195,8 +190,8 @@ class FloraMQTT:
             ]
         elif name == "tank":
             sensors = [
-                {"name": f"{sensor_name}_int", "stat_t": f"{cfg.settings.base_topic_flora}/tank", "dev_cla": "enum", "val_tpl": "{{ value }}", "unit_of_meas": ""},
-                {"name": f"{sensor_name}_str", "stat_t": f"{cfg.settings.base_topic_flora}/system", "dev_cla": "enum", "val_tpl": "{{ value_json.tank }}", "unit_of_meas": ""}
+                {"name": f"{sensor_name}_int", "stat_t": f"{config.base_topic_flora}/tank", "dev_cla": "enum", "val_tpl": "{{ value }}", "unit_of_meas": ""},
+                {"name": f"{sensor_name}_str", "stat_t": f"{config.base_topic_flora}/system", "dev_cla": "enum", "val_tpl": "{{ value_json.tank }}", "unit_of_meas": ""}
             ]
         elif name == "weather":
             sensors = [
@@ -247,9 +242,9 @@ class FloraMQTT:
         """
         if sys.implementation.name != "micropython":
             # Set topic specific message handlers
-            self.client.message_callback_add(cfg.settings.base_topic_flora + '/man_irr_cmd', self.mqtt_man_irr_cmd)
-            self.client.message_callback_add(cfg.settings.base_topic_flora + '/man_irr_duration_ctrl', self.mqtt_man_irr_duration_ctrl)
-            self.client.message_callback_add(cfg.settings.base_topic_flora + '/auto_irr_ctrl', self.mqtt_auto_irr_ctrl)
+            self.client.message_callback_add(config.base_topic_flora + '/man_irr_cmd', self.mqtt_man_irr_cmd)
+            self.client.message_callback_add(config.base_topic_flora + '/man_irr_duration_ctrl', self.mqtt_man_irr_duration_ctrl)
+            self.client.message_callback_add(config.base_topic_flora + '/auto_irr_ctrl', self.mqtt_auto_irr_ctrl)
 
             # Message handler for reception of all other subsribed topics
             self.client.on_message = self.mqtt_on_message
@@ -260,16 +255,16 @@ class FloraMQTT:
         if (subscribe):
             # Subscribe to flora control MQTT topics
             for topic in ['man_irr_cmd', 'man_irr_duration_ctrl', 'auto_irr_ctrl', 'sleep_dis_ctrl']:
-                print_line('Subscribing to MQTT topic ' + cfg.settings.base_topic_flora + '/' + topic,
+                print_line('Subscribing to MQTT topic ' + config.base_topic_flora + '/' + topic,
                         sd_notify=True)
-                self.client.subscribe(cfg.settings.base_topic_flora + '/' + topic, qos=1)
+                self.client.subscribe(config.base_topic_flora + '/' + topic, qos=1)
 
-            if (cfg.settings.sensor_interface == 'mqtt'):
+            if (config.sensor_interface == 'mqtt'):
                 # Subscribe all MQTT sensor topics, e.g. "miflora-mqtt-daemon/appletree/moisture"
                 for sensor in s.sensors:
-                    print_line('Subscribing to MQTT topic ' + cfg.settings.base_topic_sensors + '/' + sensor,
+                    print_line('Subscribing to MQTT topic ' + config.base_topic_sensors + '/' + sensor,
                             sd_notify=True)
-                    self.client.subscribe(cfg.settings.base_topic_sensors + '/' + sensor)
+                    self.client.subscribe(config.base_topic_sensors + '/' + sensor)
 
 
     #############################################################################################
@@ -296,7 +291,7 @@ class FloraMQTT:
                         sd_notify=True)
                 return
 
-            client.publish(cfg.settings.base_topic_flora + '/man_irr_stat', str(val), qos = 1)
+            client.publish(config.base_topic_flora + '/man_irr_stat', str(val), qos = 1)
             m_pump.pumps[idx].busy = PUMP_BUSY_MAN
 
 
@@ -317,14 +312,14 @@ class FloraMQTT:
             msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
         """
         try:
-            cfg.settings.irr_duration_man = int(msg.payload)
+            config.irr_duration_man = int(msg.payload)
         except ValueError:
             print_line('MQTT message "man_irr_duration_ctrl({})" received - syntax error'.format(msg.payload),
                     warning=True, sd_notify=True)
         else:
-            print_line('MQTT message "man_irr_duration_ctrl({})" received'.format(cfg.settings.irr_duration_man),
+            print_line('MQTT message "man_irr_duration_ctrl({})" received'.format(config.irr_duration_man),
                     sd_notify=True)
-            client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', msg.payload)
+            client.publish(config.base_topic_flora + '/man_irr_duration_stat', msg.payload)
 
 
     def mqtt_auto_irr_ctrl(self, client, _userdata, msg):
@@ -343,11 +338,11 @@ class FloraMQTT:
             userdata: private user data as set in Client() or user_data_set()
             msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain    
         """
-        cfg.settings.auto_irrigation = int(msg.payload)
+        config.auto_irrigation = int(msg.payload)
 
-        print_line('MQTT message "auto_irr_ctrl({})" received'.format(cfg.settings.auto_irrigation),
+        print_line('MQTT message "auto_irr_ctrl({})" received'.format(config.auto_irrigation),
                 sd_notify=True)
-        client.publish(cfg.settings.base_topic_flora + '/auto_irr_stat', msg.payload)
+        client.publish(config.base_topic_flora + '/auto_irr_stat', msg.payload)
 
 
     def mqtt_sleep_dis_ctrl(self, client, _userdata, msg):
@@ -367,11 +362,11 @@ class FloraMQTT:
             msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain    
         """
         sleep_disable = int(msg.payload)
-        cfg.settings.deep_sleep = not(sleep_disable)
+        config.deep_sleep = not(sleep_disable)
 
         print_line('MQTT message "sleep_dis_ctrl({})" received'.format(sleep_disable),
                 sd_notify=True)
-        client.publish(cfg.settings.base_topic_flora + '/sleep_dis_stat', str(1 if sleep_disable else 0))
+        client.publish(config.base_topic_flora + '/sleep_dis_stat', str(1 if sleep_disable else 0))
 
 
     def mqtt_on_message(self, _client, _userdata, msg):
