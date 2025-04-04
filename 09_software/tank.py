@@ -66,11 +66,11 @@ class Tank:
         self.p_empty = pin_sensor_empty
         
         if sys.platform == "esp32":
-            self.pin_low = Pin(pin_sensor_low, Pin.IN)  # pylint: disable=unknown-option-value
-            self.pin_empty = Pin(pin_sensor_empty, Pin.IN)  # pylint: disable=unknown-option-value
+            self.pin_low = Pin(pin_sensor_low, Pin.IN)  # pylint: disable=possibly-used-before-assignment
+            self.pin_empty = Pin(pin_sensor_empty, Pin.IN)  # pylint: disable=possibly-used-before-assignment
         else:
-            GPIO.setup(self.p_low, GPIO.IN)  # pylint: disable=unknown-option-value
-            GPIO.setup(self.p_empty, GPIO.IN)  # pylint: disable=unknown-option-value
+            GPIO.setup(self.p_low, GPIO.IN)  # pylint: disable=possibly-used-before-assignment
+            GPIO.setup(self.p_empty, GPIO.IN)  # pylint: disable=possibly-used-before-assignment
 
     @property
     def empty(self):
@@ -83,7 +83,7 @@ class Tank:
         if sys.platform == "esp32":
             return (self.pin_empty.value() == 1)
         else:
-            return (GPIO.input(self.p_empty) == True)  # pylint: disable=unknown-option-value
+            return (GPIO.input(self.p_empty) == True)  # pylint: disable=possibly-used-before-assignment
 
     @property
     def low(self):
@@ -96,7 +96,7 @@ class Tank:
         if sys.platform == "esp32":
             return (self.pin_low.value() == 1)
         else:
-            return (GPIO.input(self.p_low) == True)  # pylint: disable=unknown-option-value
+            return (GPIO.input(self.p_low) == True)  # pylint: disable=possibly-used-before-assignment
     
     @property
     def status(self):
