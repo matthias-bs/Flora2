@@ -26,6 +26,7 @@
 # 20210709 Bugfixes
 # 20250402 Code improvements
 # 20250404 Updated MQTT interface
+#          Modified pump handling
 #
 # Backlog:
 # - 
@@ -34,7 +35,7 @@
 
 import time
 from flora_mqtt import flora_mqtt 
-import pump as m_pump
+import pump
 import sensor as m_sensor
 from print_line import print_line
 import config as cfg
@@ -58,14 +59,14 @@ class Irrigation:
         """
         # Check if flag has been set (asynchronously) in 'mqtt_man_irrigation_request' 
         # message callback function
-        for i in range(2):
-            if (m_pump.pumps[i].busy == cfg.PUMP_BUSY_MAN):
+        for i, p in enumerate(pump.pumps):
+            if (p.busy == cfg.PUMP_BUSY_MAN):
                 print_line('Running pump #{} for {:d} seconds -->'.format(i+1, config.irr_duration_man),
                            console=True, sd_notify=True)
-                m_pump.pumps[i].power_on(config.irr_duration_man)
-                m_pump.pumps[i].busy = 0
+                p.power_on(config.irr_duration_man)
+                p.busy = 0
                 flora_mqtt.client.publish(config.base_topic_flora + '/man_irr_stat', str(0), qos = 1)
-                print_line('<-- Running pump #{} finished, Status: {}'.format(i+1, m_pump.pumps[i].status_str), 
+                print_line(f'<-- Running pump #{i+1} finished, Status: {p.status_str}',
                             console=True, sd_notify=True)
 
 
@@ -110,42 +111,42 @@ class Irrigation:
 
         # Evaluate per pump
         activate = [False, False]
-        for p in range(2):
+        for i, _ in enumerate(pump.pumps):
             for sensor in m_sensor.sensors:
-                if (m_sensor.sensors[sensor].pump != p+1):
+                if m_sensor.sensors[sensor].pump != i+1:
                     continue
-                if (m_sensor.sensors[sensor].valid == False):
+                if m_sensor.sensors[sensor].valid == False:
                     # At least one sensor with timeout -> bail out
                     break
-                if (m_sensor.sensors[sensor].light_il):
+                if m_sensor.sensors[sensor].light_il:
                     # At least one light value over irrigation limit -> bail out
                     break
-                if (m_sensor.sensors[sensor].moist_oh):
+                if m_sensor.sensors[sensor].moist_oh:
                     # At least one moisture value over range -> bail out 
-                    activate[p] = False
+                    activate[i] = False
                     break
-                if (m_sensor.sensors[sensor].moist_ul):
+                if m_sensor.sensors[sensor].moist_ul:
                     # At least one moisture value under range -> ready!
-                    activate[p] = True
+                    activate[i] = True
                 # Else: All moisture values (regarding this pump) within desired range -> nothing to do!
         
         schedule = [False, False]
-        for p in range(2):
+        for i, p in enumerate(pump.pumps):
             if activate[p]:
-                if ((time.time() - m_pump.pumps[p].timestamp) < config.irr_rest):
+                if (time.time() - p.timestamp) < config.irr_rest:
                     # All sensor values are within range, but time since last irrigation (irr_rest)
                     # has not expired yet -> bailing out
-                    if (VERBOSITY > 1):
-                        print_line("Auto irrigation: pump #{} scheduled.".format(p))
-                    schedule[p] = True
-                elif (m_pump.pumps[p].busy == 0):
+                    if VERBOSITY > 1:
+                        print_line(f"Auto irrigation: pump #{i} scheduled.")
+                    schedule[i] = True
+                elif p.busy == 0:
                     # Pump has not been started manually - ready!
-                    duration = config.irr_duration_auto1 if (p == 0) else config.irr_duration_auto2
-                    print_line("Auto irrigation: running pump #{} for {:d} seconds"
-                            .format(p+1, duration), console=True, sd_notify=True)
-                    m_pump.pumps[p].busy = cfg.PUMP_BUSY_AUTO
-                    m_pump.pumps[p].power_on(duration)
-                    m_pump.pumps[p].busy = 0
-                    m_pump.pumps[p].timestamp = time.time()
+                    duration = config.irr_duration_auto1 if (i == 0) else config.irr_duration_auto2
+                    print_line(f"Auto irrigation: running pump #{p+1} for {duration:d} seconds",
+                            console=True, sd_notify=True)
+                    p.busy = cfg.PUMP_BUSY_AUTO
+                    p.power_on(duration)
+                    p.busy = 0
+                    p.timestamp = time.time()
         
         return schedule
