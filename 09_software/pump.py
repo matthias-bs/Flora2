@@ -146,14 +146,14 @@ class Pump:
         if self.tank.empty:
             self.status = 1
             return (self.status)
-        
+
         if sys.platform == "esp32":
             self.pin_power.value(1)
         else:
             GPIO.output(self.p_power, GPIO.HIGH) # pylint: disable=E0606
-        
+
         sleep(0.5)
-        
+
         count = 0
         for _ in range(on_time):
             if sys.platform != "esp32" and self._drvstatus != True:
@@ -170,18 +170,18 @@ class Pump:
                     count += 1
 
             sleep(1)
-            
+        
         if sys.platform == "esp32":
             self.pin_power.value(0)
         else:
             GPIO.output(self.p_power, GPIO.LOW) # pylint: disable=E0606
-        
+
         return self.status
 
     @property
     def error(self):
         return (self.status == 2)
-    
+
     @property
     def status_str(self):
         """Get status of last pump activation as string."""
@@ -196,7 +196,7 @@ class Pump:
     def state(self):
         """Return state (for saving to RTC RAM)"""
         return (self.busy, self.timestamp)
-    
+
     @state.setter
     def state(self, var):
         """Set state (for loading from RTC RAM)"""
@@ -204,6 +204,6 @@ class Pump:
 
 #    def __str__(self):
 #        return ("{}Pin# driver control: {:2}, Pin# driver status: {:2}, Status: {:>10}, Busy: {}, Timestamp: {}"
-#                .format((self.name + ' ') if (self.name != '') else '', self.p_power, self.p_status, 
+#                .format((self.name + ' ') if (self.name != '') else '', self.p_power, self.p_status,
 #                        self.status_str, self.busy, self.timestamp))
 #
