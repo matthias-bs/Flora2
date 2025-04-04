@@ -39,7 +39,7 @@ import json
 from config import config
 import pump as m_pump
 import sensor as m_sensor
-import tank as m_tank
+import tank
 from time import localtime
 
 
@@ -151,7 +151,7 @@ class Report:
             self.data['pump'].append(status)
 
         tank_status = ['empty', 'low', 'ok']
-        self.data['tank'] = tank_status[m_tank.tank.status]
+        self.data['tank'] = tank_status[tank.tank.status]
 
     def system_settings(self):
         """

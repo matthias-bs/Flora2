@@ -162,7 +162,7 @@ import pump as m_pump
 import report as m_report
 import sensor as s
 import sensor_power as m_sensor_power
-import tank as m_tank
+import tank
 import temperature as m_temperature
 import weather as m_weather
 
@@ -246,11 +246,11 @@ def main():
     sensor_power = m_sensor_power.SensorPower(cfg.GPIO_SENSOR_POWER)
 
     # Tank object (fill level sensors)
-    m_tank.tank = m_tank.Tank(cfg.GPIO_TANK_SENS_LOW, cfg.GPIO_TANK_SENS_EMPTY)
+    tank.tank = tank.Tank(cfg.GPIO_TANK_SENS_LOW, cfg.GPIO_TANK_SENS_EMPTY)
 
     # Pump objects
     for i in range(2):
-        m_pump.pumps[i] = m_pump.Pump(cfg.GPIO_PUMP_POWER[i], cfg.GPIO_PUMP_STATUS[i], m_tank.tank)
+        m_pump.pumps[i] = m_pump.Pump(cfg.GPIO_PUMP_POWER[i], cfg.GPIO_PUMP_STATUS[i], tank.tank)
 
 
     # Get list of sensor names from config file
@@ -493,7 +493,7 @@ def main():
                                    qos = 1, retain=True)
         flora_mqtt.client.publish(config.base_topic_flora + '/man_irr_duration_stat', str(config.irr_duration_man),
                                    qos = 1, retain=True)
-        flora_mqtt.client.publish(config.base_topic_flora + '/tank', str(m_tank.tank.status),
+        flora_mqtt.client.publish(config.base_topic_flora + '/tank', str(tank.tank.status),
                                    qos = 1, retain=True)
         flora_mqtt.client.publish(config.base_topic_flora + '/sleep_dis_stat', '0' if config.deep_sleep else '1',
                                    qos = 1, retain=True)
@@ -538,7 +538,6 @@ def main():
                     flora_mqtt.client.disconnect()
                     sleep(3)
                     del sensor_power
-                    del m_tank.tank
                     del m_pump.pumps
                     try:
                         for _, obj in moisture.items():
