@@ -103,7 +103,7 @@
 # 20210609 Modified load_state()/save_state() and added items
 # 20210622 Updated adc1_cal, improved analog moisture sensor data evaluation
 #          Added BLE exception handling
-# 20210711 Fixed sending of MQTT status messages and handling of 
+# 20210711 Fixed sending of MQTT status messages and handling of
 #          boolean fallback values
 #          Fixed auto irrigation
 # 20240709 Updated include statements for MicroPython v1.23.0 compatibility
@@ -187,14 +187,14 @@ def cettime():
 
 
 def main():
-    # Set system clock from NTP server 
+    # Set system clock from NTP server
     try:
         ntptime.settime()
     except OSError:
         wifi_manager.deinit()
         machine.reset()
 
-    # Set time to Central European Time (CET) including daylight saving 
+    # Set time to Central European Time (CET) including daylight saving
     tm = cettime()
 
     # Set Real Time Clock to CET
@@ -231,7 +231,7 @@ def main():
 
         # Second energy saving level: immediately go to sleep
         if (ubatt.voltage < cfg.settings.battery_low) and (ubatt.voltage > 1000):
-            del ubatt    
+            del ubatt
             del cfg.settings
             wifi_manager.deinit()
             print_line('Low voltage - entering deep sleep')
@@ -323,7 +323,7 @@ def main():
 
     flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "online", qos=1, retain=True)
 
-#    if MEMINFO:    
+#    if MEMINFO:
 #        meminfo('MQTTClient')
 
     # Initialize irrigation
@@ -342,15 +342,15 @@ def main():
                 print_line(sensor + ' ready!', sd_notify=True)
 
         print_line('<-- Initial reception of MQTT sensor data succeeded.', sd_notify=True)
-    
+
     for sensor in s.sensors:
         flora_mqtt.client.publish_discovery_sensor(s.sensors[sensor].name)
 
     flora_mqtt.client.publish_discovery_sensor("tank")
-    
+
     meminfo('Start Main Loop')
 
-    if (VERBOSITY > 0):     
+    if (VERBOSITY > 0):
         print_line("Start Main Loop.")
 
     ###############################################################################
@@ -462,7 +462,7 @@ def main():
                                          f'{temp:2.1f}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
             del temperature
             gcollect()
-        
+
         # Read weather sensor (optional)
         if cfg.settings.weather_sensor:
             valid, weather = m_weather.weather_data()
@@ -479,7 +479,7 @@ def main():
             ubatt.atten(machine.ADC.ATTN_6DB)
             print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
             flora_mqtt.publish_discovery_sensor("ubatt")
-            flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/ubatt', 
+            flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/ubatt',
                                      f'{ubatt.voltage}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
 
         gcollect()
@@ -496,11 +496,11 @@ def main():
         # Publish status flags/values
         flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/auto_irr_stat', '1' if cfg.settings.auto_irrigation else '0',
                                    qos = 1, retain=True)
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', str(cfg.settings.irr_duration_man), 
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/man_irr_duration_stat', str(cfg.settings.irr_duration_man),
                                    qos = 1, retain=True)
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/tank', str(m_tank.tank.status), 
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/tank', str(m_tank.tank.status),
                                    qos = 1, retain=True)
-        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/sleep_dis_stat', '0' if cfg.settings.deep_sleep else '1', 
+        flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/sleep_dis_stat', '0' if cfg.settings.deep_sleep else '1',
                                    qos = 1, retain=True)
 
         # Execute manual irrigation (if requested)
@@ -532,7 +532,7 @@ def main():
                 sensor_power.enable(False)
 
                 # Prevent deep sleep if battery voltage input is disconnected
-                # to simplify debugging/flashing 
+                # to simplify debugging/flashing
                 if (cfg.settings.deep_sleep and ubatt.voltage > 1000):
                     print_line(f'Entering deep sleep in 5 seconds, will wake up after {cfg.settings.processing_period} seconds ...')
                     flora_mqtt.client.publish(cfg.settings.base_topic_flora + '/status', "offline",
@@ -600,7 +600,7 @@ def main():
 
 if __name__ == '__main__':
     #pin_mark = machine.Pin(0, machine.Pin.OUT, value = 1)
-    
+
     if MEMINFO:
         meminfo('Boot begin')
 
@@ -611,10 +611,10 @@ if __name__ == '__main__':
         print_line(f"Cannot connect to WiFi! Rebooting in {cfg.WLAN_RETRY_DELAY} seconds.")
         sleep(cfg.WLAN_RETRY_DELAY)
         reset()
-    
+
     # Mark1 WIFI on
     #pin_mark.value(0)
-    
+
     if MEMINFO:
         meminfo('Boot finished')
 
@@ -625,5 +625,5 @@ if __name__ == '__main__':
 
     if MEMINFO:
         meminfo('__main__')
-    
+
     main()
