@@ -158,10 +158,10 @@ from garbage_collect import gcollect, meminfo
 import irrigation as m_irrigation
 import moisture as m_moisture
 from print_line import print_line
-import pump as m_pump
 import report as m_report
 import sensor as s
 import sensor_power as m_sensor_power
+import pump
 import tank
 import temperature as m_temperature
 import weather as m_weather
@@ -250,7 +250,7 @@ def main():
 
     # Pump objects
     for i in range(2):
-        m_pump.pumps[i] = m_pump.Pump(cfg.GPIO_PUMP_POWER[i], cfg.GPIO_PUMP_STATUS[i], tank.tank)
+        pump.pumps.append(pump.Pump(cfg.GPIO_PUMP_POWER[i], cfg.GPIO_PUMP_STATUS[i], tank.tank))
 
 
     # Get list of sensor names from config file
@@ -538,7 +538,7 @@ def main():
                     flora_mqtt.client.disconnect()
                     sleep(3)
                     del sensor_power
-                    del m_pump.pumps
+                    pump.pumps = []
                     try:
                         for _, obj in moisture.items():
                             del obj
@@ -566,7 +566,12 @@ def main():
             for _ in range(config.processing_period):
                 # Quit sleeping if flag has been set (asynchronously) in 'mqtt_man_irr_cmd'
                 # message callback function
-                if (m_pump.pumps[0].busy or m_pump.pumps[1].busy):
+                busy = False
+                for p in pump.pumps:
+                    if p.busy:
+                        busy = True
+                        break
+                if busy:
                     break
 
                 # While Eclipse Paho maintains a network handler loop,

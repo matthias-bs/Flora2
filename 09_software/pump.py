@@ -49,7 +49,7 @@ else:
 ##############################################################################
 # Global variables
 ##############################################################################
-pumps = [None, None]
+pumps = [] # List of pump instances
 
 ###############################################################################
 # Pump class - Pump hardware control/status and software busy flag + timestamp

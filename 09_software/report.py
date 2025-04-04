@@ -37,8 +37,8 @@
 import json
 
 from config import config
-import pump as m_pump
 import sensor as m_sensor
+import pump
 import tank
 from time import localtime
 
@@ -133,18 +133,18 @@ class Report:
         Add system status to report.
         """
         self.data['irrigation'] = []
-        for i in range(2):
-            if (m_pump.pumps[i].timestamp != 0):
-                last_irrigation = self.date_time_str(localtime(m_pump.pumps[i].timestamp))
-                next_irrigation = self.date_time_str(localtime(m_pump.pumps[i].timestamp + config.irr_rest))
+        for i, p in enumerate(pump.pumps):
+            if (p.timestamp != 0):
+                last_irrigation = self.date_time_str(localtime(p.timestamp))
+                next_irrigation = self.date_time_str(localtime(p.timestamp + config.irr_rest))
                 scheduled = config.irr_scheduled[i]
                 self.data['irrigation'].append({'last': last_irrigation, 'next': next_irrigation, 'scheduled': scheduled})
 
         self.data['pump'] = []
-        for i in range(2):
-            if (m_pump.pumps[i].status == 2):
+        for p in pump.pumps:
+            if (p.status == 2):
                 status = "on: error"
-            elif (m_pump.pumps[i].status == 4):
+            elif (p.status == 4):
                 status = "off: error"
             else:
                 status = "ok"
