@@ -20,6 +20,7 @@
 # 20210211 Fixed low()/empty() on ESP32
 # 20210519 Added global variable <tank>
 # 20250402 Code improvements
+
 #
 # Backlog:
 # - 
@@ -39,7 +40,7 @@ else:
 tank = None
 
 ###############################################################################
-# Tank class - Fill level sensor status
+# Tank class (Singleton) - Fill level sensor status
 ###############################################################################
 class Tank:
     """
@@ -52,6 +53,14 @@ class Tank:
         p_low (int):    input pin no. for fill-level empty sensor
         p_empty (int):  input pin no. for fill-level low sensor 
     """
+    _instance = None  # Class-level variable to hold the singleton instance
+    _initialized = False  # Define _initialized at the class level
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(Tank, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self, pin_sensor_low, pin_sensor_empty, name=""):
         """
         The constructor for Tank class.
@@ -61,6 +70,10 @@ class Tank:
             pin_sensor_empty (int): GPIO pin no. of empty level sensor.
             name (string):          instance name
         """
+        if self._initialized:
+            return  # Prevent re-initialization
+        self._initialized = True
+
         self.name = name
         self.p_low = pin_sensor_low
         self.p_empty = pin_sensor_empty
