@@ -93,7 +93,7 @@ class Moisture:
         if sys.platform == "esp32":
             raw_val = self._adc.voltage
             self.raw = raw_val
-            valid = True if (raw_val >= self._ul and raw_val <= self._oh) else False
+            valid = bool(raw_val >= self._ul and raw_val <= self._oh)
             moisture = int(self._m * (raw_val - self._x1) + self._y1)
             moisture = moisture if valid else raw_val
             return (valid, moisture)
