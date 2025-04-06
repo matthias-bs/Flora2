@@ -5,7 +5,6 @@
 #
 # - console output with timestamp and coloured text to stdout/stderr
 # - output with timestamp as Systemd Service Notifications
-# - send mail
 #
 # created: 01/2021 updated: 01/2021
 #
@@ -20,7 +19,7 @@
 # 20250402 Code improvements
 #
 # Backlog:
-# - 
+# -
 #
 ###############################################################################
 
@@ -47,7 +46,7 @@ if sys.implementation.name != "micropython":
     def print_line(text, error = False, warning=False, sd_notify=False, console=True):
         """
         Logging function
-        
+
         Parameters:
             text (string):    logging text
             error (bool):     format console output as error
@@ -67,14 +66,12 @@ if sys.implementation.name != "micropython":
         if sd_notify:
             sd_notifier.notify('STATUS={} - {}.'.format(timestamp_sd, unidecode(text)))
 else:
-    def print_line(text, _error = False, _warning=False, _sd_notify=False, _console=True):
-        
+    def print_line(text, error = False, warning=False, sd_notify=False, console=True): # pylint: disable=unused-argument
+
         dt = localtime()
         # date-time = (year, month, mday, hour, minute, second, weekday, yearday)
         # timestamp = yyyy-mm-dd HH:MM:SS
         timestamp = '{}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}'.format(dt[0], dt[1], dt[2], dt[3], dt[4], dt[5])
-         
+
         #timestamp = strftime('%Y-%m-%d %H:%M:%S', localtime())
         print('[{}] '.format(timestamp) + '{}'.format(text))
-         
-         
