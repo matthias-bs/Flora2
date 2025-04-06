@@ -159,7 +159,7 @@ import irrigation as m_irrigation
 import moisture as m_moisture
 from print_line import print_line
 import report as m_report
-import sensor as s
+import sensor
 import sensor_power as m_sensor_power
 import pump
 import tank
@@ -263,14 +263,14 @@ def main():
         sys.exit(1)
 
     # Create a dictionary of Sensor objects
-    s.sensors = {}
+    sensor.sensors = {}
     gcollect()
 
-    for sensor in sensor_list:
-        s.sensors[sensor] = s.Sensor(sensor, config.mqtt_msg_timeout, config.sensor_batt_low)
+    for s in sensor_list:
+        sensor.sensors[s] = sensor.Sensor(sensor, config.mqtt_msg_timeout, config.sensor_batt_low)
         # check if config file contains a section for this sensor
-        if (not(config.cp.has_section(sensor))):
-            print_line(f'The configuration file "config.ini" has a sensor named {sensor} in the [Sensors] section,',
+        if (not(config.cp.has_section(s))):
+            print_line(f'The configuration file "config.ini" has a sensor named {s} in the [Sensors] section,',
                        error=True, sd_notify=True)
             print_line('but no plant data has been provided in a section named accordingly.',
                     error=True, sd_notify=True)
@@ -281,20 +281,20 @@ def main():
 
     # Options expected (mandatory!) in each sensor-/plant-data section of the config-file
     # Read all plant data from the section (section name = sensor name)
-    for sensor in s.sensors:
-        if s.config_error(sensor):
+    for s in sensor.sensors:
+        if sensor.config_error(s):
             sys.exit(1)
 
-        s.sensors[sensor].init_plant()
+        sensor.sensors[s].init_plant()
 
         if (config.sensor_interface == 'ble'):
-            addr = config.cp.get(sensor, 'address')
+            addr = config.cp.get(s, 'address')
             addr = addr.replace(':', '')
             addr = binascii.unhexlify(addr)
-            s.sensors[sensor].address = bytes(addr, "utf-8")
+            sensor.sensors[s].address = bytes(addr, "utf-8")
 
         # Remove section from memory allocated by ConfigParser
-        config.cp.remove_section(sensor)
+        config.cp.remove_section(s)
     del config.cp
     gcollect()
 
@@ -306,8 +306,8 @@ def main():
             sys.exit(1)
 
         moisture = {}
-        for i, sensor in enumerate(sensor_list):
-            moisture[sensor] = m_moisture.Moisture(cfg.MOISTURE_ADC_PINS[i], cfg.MOISTURE_MIN_VAL, cfg.MOISTURE_MAX_VAL)
+        for i, s in enumerate(sensor_list):
+            moisture[s] = m_moisture.Moisture(cfg.MOISTURE_ADC_PINS[i], cfg.MOISTURE_MIN_VAL, cfg.MOISTURE_MAX_VAL)
 
     # Init MQTT client
     #m_mqtt.MQTTClient.DEBUG = True
@@ -328,18 +328,18 @@ def main():
         # Wait until MQTT data is valid (this may take a while...)
         print_line('Waiting for MQTT sensor data -->', sd_notify=True)
 
-        for sensor in s.sensors:
-            while not s.sensors[sensor].valid:
+        for s in sensor.sensors:
+            while not sensor.sensors[s].valid:
                 flora_mqtt.client.check_msg()
                 flora_mqtt.client.ping()
                 sleep(1)
             if (VERBOSITY > 1):
-                print_line(sensor + ' ready!', sd_notify=True)
+                print_line(s + ' ready!', sd_notify=True)
 
         print_line('<-- Initial reception of MQTT sensor data succeeded.', sd_notify=True)
 
-    for sensor in s.sensors:
-        flora_mqtt.client.publish_discovery_sensor(s.sensors[sensor].name)
+    for s in sensor.sensors:
+        flora_mqtt.client.publish_discovery_sensor(sensor.sensors[s].name)
 
     flora_mqtt.client.publish_discovery_sensor("tank")
 
@@ -386,10 +386,10 @@ def main():
             sleep(1)
 
         if (config.sensor_interface == 'local'):
-            for sensor in sensor_list:
+            for s in sensor_list:
                 valid, moist_val = moisture[sensor].moisture
                 if (valid):
-                    s.sensors[sensor].update_moisture_sensor(moist_val)
+                    sensor.sensors[s].update_moisture_sensor(moist_val)
                     data = {}
                     data['moisture'] = moist_val
                     json_data = json.dumps(data)
@@ -397,7 +397,7 @@ def main():
                                                qos = 1, retain=cfg.MQTT_DATA_RETAIN)
                     print_line(f"{sensor} - Moisture: {moist_val}%")
                 else:
-                    print_line(f'Moisture sensor "{sensor}" value={moist_val} - out of range. Check connection and power settings.',
+                    print_line(f'Moisture sensor "{s}" value={moist_val} - out of range. Check connection and power settings.',
                                error=True, sd_notify=True)
 
         # Mark4 BLE start
@@ -410,8 +410,8 @@ def main():
                 print_line(f'Bluetooth LE exception: {uerrno.errorcode[exc.errno]}', error=True, sd_notify=True)
                 print_line('Cannot access MiFlora sensor(s).')
             else:
-                for sensor in s.sensors:
-                    addr = s.sensors[sensor].address
+                for s in sensor.sensors:
+                    addr = sensor.sensors[s].address
                     print_line(f'Connecting to MiFlora sensor {binascii.hexlify(addr)}', sd_notify=True)
 
                     for _ in range(cfg.BLE_MAX_RETRIES):
@@ -423,7 +423,7 @@ def main():
                             print_line(f"Temperature: {miflora_ble.temp}°C Light: {miflora_ble.light}lx " + \
                                        f"Moisture: {miflora_ble.moist}% Conductivity: {miflora_ble.cond}µS/cm")
                             s.sensors[sensor].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
-                            flora_mqtt.client.publish(config.base_topic_flora + '/' + sensor, s.sensors[sensor].data,
+                            flora_mqtt.client.publish(config.base_topic_flora + '/' + s, sensor.sensors[s].data,
                                                     qos = 1, retain=cfg.MQTT_DATA_RETAIN)
                             break
                         else:
@@ -449,8 +449,8 @@ def main():
                 temp = temperature.temperature()
                 #temperature.show_devices()
                 if (config.sensor_interface == 'local'):
-                    for sensor in s.sensors:
-                        s.sensors[sensor].update_temperature_sensor(temp)
+                    for s in sensor.sensors:
+                        sensor.sensors[s].update_temperature_sensor(temp)
                 print_line(f"DS1820 - Temperature: {temp}°C")
                 flora_mqtt.publish_discovery_sensor("temperature")
                 flora_mqtt.client.publish(config.base_topic_flora + '/temperature',
@@ -517,10 +517,10 @@ def main():
             time.sleep_ms(500) # pylint: disable=E1101
 
         if (VERBOSITY > 1):
-            for sensor in s.sensors:
-                print_line(f"{sensor:16s} Moisture: {s.sensors[sensor].moist:3d} % Temperature: {s.sensors[sensor].temp:2.1f} " +\
-                           f"°C Conductivity: {s.sensors[sensor].cond:4d} uS/cm Light: {s.sensors[sensor].light:6d} " + \
-                           f"lx Battery: {s.sensors[sensor].batt:3d} %")
+            for s in sensor.sensors:
+                print_line(f"{s:16s} Moisture: {sensor.sensors[s].moist:3d} % Temperature: {sensor.sensors[s].temp:2.1f} " +\
+                           f"°C Conductivity: {sensor.sensors[s].cond:4d} uS/cm Light: {sensor.sensors[s].light:6d} " + \
+                           f"lx Battery: {sensor.sensors[s].batt:3d} %")
 
         if (config.daemon_enabled):
             if (sys.platform == "esp32"):
