@@ -23,9 +23,10 @@
 # 20250404 Changed Tank class to singleton
 #
 # Backlog:
-# - 
+# -
 #
 ###############################################################################
+"""Tank module."""
 
 import sys
 
@@ -51,7 +52,7 @@ class Tank:
         low (bool):     fill-level low
         empty (bool):   fill-level empty
         p_low (int):    input pin no. for fill-level empty sensor
-        p_empty (int):  input pin no. for fill-level low sensor 
+        p_empty (int):  input pin no. for fill-level low sensor
     """
     _instance = None  # Class-level variable to hold the singleton instance
     _initialized = False  # Define _initialized at the class level
@@ -77,7 +78,7 @@ class Tank:
         self.name = name
         self.p_low = pin_sensor_low
         self.p_empty = pin_sensor_empty
-        
+
         if sys.platform == "esp32":
             self.pin_low = Pin(pin_sensor_low, Pin.IN)  # pylint: disable=possibly-used-before-assignment
             self.pin_empty = Pin(pin_sensor_empty, Pin.IN)  # pylint: disable=possibly-used-before-assignment
@@ -94,9 +95,9 @@ class Tank:
             bool: True if tank is empty, false otherwise.
         """
         if sys.platform == "esp32":
-            return (self.pin_empty.value() == 1)
+            return self.pin_empty.value() == 1
         else:
-            return (GPIO.input(self.p_empty) == True)  # pylint: disable=possibly-used-before-assignment
+            return GPIO.input(self.p_empty) is True # pylint: disable=possibly-used-before-assignment
 
     @property
     def low(self):
@@ -107,10 +108,10 @@ class Tank:
             bool: True if tank is low, false otherwise.
         """
         if sys.platform == "esp32":
-            return (self.pin_low.value() == 1)
+            return self.pin_low.value() == 1
         else:
-            return (GPIO.input(self.p_low) == True)  # pylint: disable=possibly-used-before-assignment
-    
+            return GPIO.input(self.p_low) is True # pylint: disable=possibly-used-before-assignment
+
     @property
     def status(self):
         """
