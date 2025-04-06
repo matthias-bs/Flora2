@@ -27,14 +27,14 @@
 # 20210712 Fixed setting of attribute pump in init_plant() -> integer!
 #
 # Backlog:
-# - 
+# -
 #
 ###############################################################################
+"""Sensor module."""
 
 from time import time
-from print_line import print_line
-
 import json
+from print_line import print_line
 from config import config
 
 ##############################################################################
@@ -43,9 +43,10 @@ from config import config
 sensors = None
 
 def config_error(sensor):
+    """Check if the configuration file has all the required keys for a sensor"""
     for option in [ 'name',
                 'pump',
-                'temp_min', 
+                'temp_min',
                 'temp_max',
                 'cond_min',
                 'cond_max',
@@ -62,9 +63,9 @@ def config_error(sensor):
             print_line('but the key "' + option + '" is missing.',
                        error=True, sd_notify=True)
             return True
-    
+
     if config.sensor_interface == 'ble':
-        if not config.cp.has_option(sensor, 'address'):                
+        if not config.cp.has_option(sensor, 'address'):
             print_line('The configured plant sensor interface is Bluetooth LE,')
             print_line('the configuration file "config.ini" has a section "[' + sensor + ']",',
                         error=True, sd_notify=True)
@@ -80,18 +81,18 @@ def config_error(sensor):
 class Sensor:
     """
     This is a class for sensor data, plant specific limits and all the rest.
-    
+
     Attributes:
         General:
         --------
         name (string):      sensor name
         address (string):   Bluetooth LE address
-        pump (int):         pump serving this plant 
+        pump (int):         pump serving this plant
         tstamp (int):       timestamp of last sensor data reception
         plant (string):     name of the plant assigned to this sensor
         batt_min (int):     minimum battery level [%]
         _tout (int):        max. time between data updates
-    
+
         Actual sensor values:
         ---------------------
         temp (float):       temperature [°C]
@@ -99,15 +100,15 @@ class Sensor:
         moist (int):        moisture [%]
         light (int):        light [lux]
         batt (int):         battery [%]
-        
+
         Lower limits (desired by the plant):
         ------------------------------------
         temp_min (float):   temperature [°C]
         cond_min (int):     conductivity [µS/cm]
-        moist_lo (int):     moisture (inner limit) [%] 
+        moist_lo (int):     moisture (inner limit) [%]
         moist_min (int):    moisture (outer limit) [%]
         light_min (int):    light [lux]
-               
+
         Upper limits (desired by the plant):
         ------------------------------------
         temp_max (float):   temperature [°C]
@@ -167,7 +168,7 @@ class Sensor:
         self.light_oh = False
         # Upper light limit for irrigation
         self.light_irr = 0
-            
+
     def init_plant(self):
         """
         Initialize plant data
@@ -180,7 +181,7 @@ class Sensor:
         self.cond_min  = config.cp.getint(sensor, 'cond_min')
         self.cond_max  = config.cp.getint(sensor, 'cond_max')
         self.moist_min = config.cp.getint(sensor, 'moist_min')
-        self.moist_lo  = config.cp.getint(sensor, 'moist_lo')       
+        self.moist_lo  = config.cp.getint(sensor, 'moist_lo')
         self.moist_hi  = config.cp.getint(sensor, 'moist_hi')
         self.moist_max = config.cp.getint(sensor, 'moist_max')
         self.light_min = config.cp.getint(sensor, 'light_min')
@@ -190,12 +191,18 @@ class Sensor:
 
     @property
     def timeout(self):
-        return ((time() - self.tstamp) > self._tout)
+        """
+        Check if the last update of sensor data has timed out
+        
+        Returns:
+            bool: Sensor data has timed out
+        """
+        return (time() - self.tstamp) > self._tout
 
     def update_sensor(self, temp, cond, moist, light, batt):
         """
         Update sensor data, timestamp and comparison flags
-        
+
         Parameters:
             temp (float):     temperature [°C]
             cond (int):       conductivity [µS/cm]
@@ -209,7 +216,7 @@ class Sensor:
         self.light = light
         self.batt = batt
         self.tstamp = time()
-        
+
         self.batt_ul = self.batt < self.batt_min
         self.temp_ul = self.temp < self.temp_min
         self.temp_oh = self.temp > self.temp_max
@@ -226,13 +233,13 @@ class Sensor:
     def update_moisture_sensor(self, moist):
         """
         Update sensor data, timestamp and comparison flags
-        
+
         Parameters:
             moist (int):      moisture [%]
         """
         self.moist = moist
         self.tstamp = time()
-        
+
         self.moist_ul = self.moist < self.moist_min
         self.moist_ll = (self.moist < self.moist_lo) and (self.moist >= self.moist_min)
         self.moist_hl = (self.moist > self.moist_hi) and (self.moist <= self.moist_max)
@@ -241,33 +248,34 @@ class Sensor:
     def update_temperature_sensor(self, temp):
         """
         Update sensor data, timestamp and comparison flags
-        
+
         Parameters:
             temp (float):     temperature [°C]
         """
         self.temp = temp
         self.tstamp = time()
-        
+
         self.temp_ul = self.temp < self.temp_min
         self.temp_oh = self.temp > self.temp_max
-    
-    @property    
+
+    @property
     def valid(self):
         """
         Check if data is valid
-        
+
         Returns:
-            bool: Sensor data has been updated initially and the last update occurred without timeout 
+            bool: Sensor data has been updated initially and
+                  the last update occurred without timeout
         """
-        if (self.tstamp == 0):
-            return (False)
-        return ((time() - self.tstamp) < self._tout) 
+        if self.tstamp == 0:
+            return False
+        return (time() - self.tstamp) < self._tout
 
     @property
     def data(self):
         """
         Format sensor data as JSON string
-        
+
         Returns:
             string: Sensor data as JSON string
         """
@@ -284,7 +292,7 @@ class Sensor:
     def state(self):
         """Return state (for saving to RTC RAM)"""
         return self.tstamp
-    
+
     @state.setter
     def state(self, var):
         """Set state (for loading from RTC RAM)"""
