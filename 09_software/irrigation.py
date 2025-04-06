@@ -36,7 +36,7 @@
 import time
 from flora_mqtt import flora_mqtt 
 import pump
-import sensor as m_sensor
+import sensor
 from print_line import print_line
 import config as cfg
 from config import config, VERBOSITY
@@ -112,20 +112,20 @@ class Irrigation:
         # Evaluate per pump
         activate = [False, False]
         for i, _ in enumerate(pump.pumps):
-            for sensor in m_sensor.sensors:
-                if m_sensor.sensors[sensor].pump != i+1:
+            for s in sensor.sensors:
+                if sensor.sensors[s].pump != i+1:
                     continue
-                if m_sensor.sensors[sensor].valid == False:
+                if sensor.sensors[s].valid == False:
                     # At least one sensor with timeout -> bail out
                     break
-                if m_sensor.sensors[sensor].light_il:
+                if sensor.sensors[s].light_il:
                     # At least one light value over irrigation limit -> bail out
                     break
-                if m_sensor.sensors[sensor].moist_oh:
+                if sensor.sensors[s].moist_oh:
                     # At least one moisture value over range -> bail out 
                     activate[i] = False
                     break
-                if m_sensor.sensors[sensor].moist_ul:
+                if sensor.sensors[s].moist_ul:
                     # At least one moisture value under range -> ready!
                     activate[i] = True
                 # Else: All moisture values (regarding this pump) within desired range -> nothing to do!
