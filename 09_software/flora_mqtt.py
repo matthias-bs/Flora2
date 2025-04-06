@@ -47,7 +47,7 @@ import binascii
 
 #import config as cfg
 from config import config
-import sensor as s
+import sensor
 #from time import sleep_ms
 from config import VERBOSITY, PUMP_BUSY_MAN
 from print_line import print_line
@@ -208,15 +208,15 @@ class FloraMQTT:
                 {"name": f"{name}_conductivity", "stat_t": f"{state_topic}", "dev_cla": "conductivity", "val_tpl": "{{ value_json.conductivity | int }}", "unit_of_meas": "µS/cm"}
             ]
         
-        for sensor in sensors:
-            discovery_topic = f"homeassistant/sensor/{sensor['name']}/config"
+        for s in sensors:
+            discovery_topic = f"homeassistant/sensor/{s['name']}/config"
             discovery_payload = {
-                "name": sensor["name"],
-                "stat_t": sensor["stat_t"],
-                "val_tpl": sensor["val_tpl"],
-                "unit_of_meas": sensor["unit_of_meas"],
-                "dev_cla": sensor["dev_cla"],
-                "uniq_id": sensor["name"],
+                "name": s["name"],
+                "stat_t": s["stat_t"],
+                "val_tpl": s["val_tpl"],
+                "unit_of_meas": s["unit_of_meas"],
+                "dev_cla": s["dev_cla"],
+                "uniq_id": s["name"],
                 "dev": {
                     "identifiers": ["plant_sensor"],
                     "name": "Flora2",
@@ -261,10 +261,10 @@ class FloraMQTT:
 
             if (config.sensor_interface == 'mqtt'):
                 # Subscribe all MQTT sensor topics, e.g. "miflora-mqtt-daemon/appletree/moisture"
-                for sensor in s.sensors:
-                    print_line('Subscribing to MQTT topic ' + config.base_topic_sensors + '/' + sensor,
+                for s in sensor.sensors:
+                    print_line('Subscribing to MQTT topic ' + config.base_topic_sensors + '/' + s,
                             sd_notify=True)
-                    self.client.subscribe(config.base_topic_sensors + '/' + sensor)
+                    self.client.subscribe(config.base_topic_sensors + '/' + s)
 
 
     #############################################################################################
@@ -380,7 +380,7 @@ class FloraMQTT:
             userdata: private user data as set in Client() or user_data_set()
             msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain    
         """
-        _base_topic, sensor = msg.topic.split('/')
+        _base_topic, sens = msg.topic.split('/')
 
         # Convert JSON ecoded data to dictionary
         message = json.loads(msg.payload.decode('utf-8'))
@@ -391,10 +391,10 @@ class FloraMQTT:
 
         # Discard data if moisture value suddenly drops to zero
         if ((float(message['moisture']) == 0) and
-            (s.sensors[sensor].moist > 5)):
+            (sensor.sensors[sens].moist > 5)):
             return
 
-        s.sensors[sensor].update_sensor(
+        sensor.sensors[sens].update_sensor(
             float(message['temperature']),
             int(message['conductivity']),
             int(message['moisture']),
