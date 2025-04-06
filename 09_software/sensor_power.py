@@ -18,9 +18,10 @@
 # 20250402 Code improvements
 #
 # Backlog:
-# - 
+# -
 #
 ###############################################################################
+"""Sensor power module."""
 
 import sys
 
@@ -28,7 +29,7 @@ if sys.implementation.name == "micropython":
     from machine import Pin
 else:
     from gpio import GPIO
-    
+
 ###############################################################################
 # SensorPower class - Sensor power control
 ###############################################################################
@@ -54,7 +55,7 @@ class SensorPower:
         else:
             GPIO.setup(self.p_power, GPIO.OUT) # pylint: disable=possibly-used-before-assignment
             GPIO.output(self.p_power, GPIO.LOW) # pylint: disable=possibly-used-before-assignment
-            
+
         self.name = name
 
     def enable(self, power):
