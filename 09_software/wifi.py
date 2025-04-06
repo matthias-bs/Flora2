@@ -18,18 +18,21 @@
 # 20250403 Added singleton pattern
 #
 # Backlog:
-# - 
+# -
 #
 ###############################################################################
+"""WiFi connection module."""
 
 from time import sleep
-from network import WLAN, STA_IF, AP_IF
 from secrets import NETWORKS
+from network import WLAN, STA_IF, AP_IF
+
 
 USE_AP = False  # Turn On Internal AP After Failed WiFi Station Connection
 
 
 class WiFiManager:
+    """Singleton class to manage WiFi connections."""
     _instance = None  # Class-level variable to hold the singleton instance
     _initialized = False  # Define _initialized at the class level
 
@@ -87,7 +90,7 @@ class WiFiManager:
         """Check if the device is connected to WiFi."""
         return self.station.isconnected()
 
-    
+
     def deinit(self):
         """Deactivate the WiFi station."""
         if self.station.active():
