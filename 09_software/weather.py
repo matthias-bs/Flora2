@@ -5,7 +5,7 @@
 #
 # - provides temperature, humidity and barometric pressure
 #   from BME280 sensor connected to I2C bus interface
-#  
+#
 #
 # created: 05/2021 updated: 05/2021
 #
@@ -23,9 +23,10 @@
 # 20250402 Code improvements
 #
 # Backlog:
-# - 
+# -
 #
 ###############################################################################
+"""Weather sensor data module."""
 
 import config as cfg
 from print_line import print_line
@@ -37,19 +38,20 @@ import sht30 # https://github.com/cdrajb/M5_ENVIII
 import qmp6988 # https://github.com/cdrajb/M5_ENVIII
 
 def weather_data():
+    """Get weather data from sensor connected to I2C bus interface."""
     data = {}
     valid = False
-    
+
     try:
         bus = SoftI2C(scl=Pin(cfg.GPIO_I2C_SCL), sda=Pin(cfg.GPIO_I2C_SDA))
     except OSError as exc:
         valid = False
         print_line(f'I2C Bus Error! ({exc.args[1]})!', error=True, console=True, sd_notify=True)
-    
+
     try:
         bme = bme280.BME280(i2c=bus, address=cfg.BME280_ADDR, mode=bme280.BME280_OSAMPLE_1)
     except OSError:
-        print_line(f'Failed to access BME280 sensor at I2C address {hex(cfg.BME280_ADDR)}!', 
+        print_line(f'Failed to access BME280 sensor at I2C address {hex(cfg.BME280_ADDR)}!',
                    error=True, console=True, sd_notify=True)
     else:
         valid = True
@@ -71,7 +73,7 @@ def weather_data():
             valid = True
             data['temperature'] = round(temperature, 1)
             data['humidity']    = round(humidity, 0)
-        
+
     try:
         qmp = qmp6988.QMP6988(i2c=bus)
     except OSError:
