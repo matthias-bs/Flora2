@@ -31,10 +31,7 @@ class ConfigParser:
 
     def has_section(self, section):
         """Indicate whether the named section is present in the configuration."""
-        if section in self.config_dict.keys():
-            return True
-        else:
-            return False
+        return bool(section in self.config_dict.keys())
 
     def add_option(self, section, option):
         """Create a new option in the configuration."""
@@ -61,13 +58,13 @@ class ConfigParser:
         if not fp and not filename:
             print("ERROR : no filename and no fp")
             raise ValueError("No filename or file pointer provided")
-        elif not fp and filename:
+        if not fp and filename:
             try:
-                with open(filename, 'r', encoding='utf-8') as fp:
+                with open(filename, 'r', encoding='utf-8') as f:
                     self.config_dict = {}
                     section = 'Default'
                     
-                    for line in fp:
+                    for line in f:
                         # split line at first separator '#' and take first part
                         line = line.split('#', 1)[0]
                         
@@ -95,8 +92,7 @@ class ConfigParser:
         if not self.has_option(section,option):
             if (fallback == ''):
                 raise ValueError("Option %s does not exist in section %s" % (option, section))
-            else:
-                return fallback
+            return fallback
 
         return self.config_dict[section][option]
 
@@ -107,9 +103,8 @@ class ConfigParser:
         if not self.has_option(section,option):
             if (fallback == None):
                 raise ValueError("Option %s does not exist in section %s" % (option, section))
-            else:
-                return ((fallback in TRUE_ENCODINGS) or (fallback==1))
-        
+            return ((fallback in TRUE_ENCODINGS) or (fallback==1))
+
         return (self.config_dict[section][option].lower() in TRUE_ENCODINGS)
 
     def getint(self, section, option, fallback=None):
@@ -119,8 +114,7 @@ class ConfigParser:
         if not self.has_option(section,option):
             if (fallback == None):
                 raise ValueError("Option %s does not exist in section %s" % (option, section))
-            else:
-                return fallback
+            return fallback
         return int(self.config_dict[section][option])
  
     def getfloat(self, section, option, fallback=None):
@@ -128,41 +122,36 @@ class ConfigParser:
         if not self.has_section(section):
             raise ValueError("Section %s does not exist" % section)
         if not self.has_option(section,option):
-            if (fallback == None):
+            if fallback == None:
                 raise ValueError("Option %s does not exist in section %s" % (option, section))
-            else:
-                return fallback
+            return fallback
         return float(self.config_dict[section][option])
 
     def has_option(self, section, option):
         """Check for the existence of a given option in a given section."""
         if not section in self.config_dict:
             raise ValueError("Section %s does not exist" % section)
-        if option in self.config_dict[section].keys():
-            return True
-        else:
-            return False
+        return bool(option in self.config_dict[section].keys())
 
     def write(self, filename = None, fp = None):
         """Write an .ini-format representation of the configuration state."""
         if not fp and not filename:
             raise ValueError("No filename or file pointer provided")
-        elif not fp and filename:
-            fp = open(filename,'w', encoding='utf-8')
-
-        for section in self.config_dict.keys():
-            fp.write('[%s]\n' % section)
-            for option in self.config_dict[section].keys():
-                fp.write('\n%s =' % option)
-                values = self.config_dict[section][option]
-                if type(values) == type([]):
-                    fp.write('\n    ')
-                    values = '\n    '.join(values)
-                else:
-                    fp.write(' ')
-                fp.write(values)
-                fp.write('\n')
-            fp.write('\n')
+        if not fp and filename:
+            with open(filename,'w', encoding='utf-8') as f:
+                for section in self.config_dict.keys():
+                    f.write('[%s]\n' % section)
+                    for option in self.config_dict[section].keys():
+                        f.write('\n%s =' % option)
+                        values = self.config_dict[section][option]
+                        if type(values) == type([]):
+                            f.write('\n    ')
+                            values = '\n    '.join(values)
+                        else:
+                            f.write(' ')
+                        f.write(values)
+                        f.write('\n')
+                    f.write('\n')
 
 
     def remove_option(self, section, option):
