@@ -34,6 +34,7 @@
 # - Check/modify driver status for BTS117
 #
 ###############################################################################
+"""Pump module."""
 
 import sys
 from time import sleep
@@ -61,7 +62,7 @@ class Pump:
 
     Attributes:
         p_power (int):          output pin no. for pump driver control
-        p_status (int):         input pin no. for pump driver status 
+        p_status (int):         input pin no. for pump driver status
         tank (Tank):            Tank object
         _drvstatus (bool):      raw value of pump driver status
         busy (int):             pump is currently busy (has to be set explicitely)
@@ -105,7 +106,7 @@ class Pump:
         if sys.platform == "esp32":
             return self.pin_status.value()
         else:
-            return (GPIO.input(self.p_status) == GPIO.HIGH) # pylint: disable=E0606
+            return GPIO.input(self.p_status) == GPIO.HIGH # pylint: disable=E0606
 
     def control(self, power):
         """
@@ -144,7 +145,7 @@ class Pump:
         self.status = 0
         if self.tank.empty:
             self.status = 1
-            return (self.status)
+            return self.status
 
         if sys.platform == "esp32":
             self.pin_power.value(1)
@@ -155,7 +156,7 @@ class Pump:
 
         count = 0
         for _ in range(on_time):
-            if sys.platform != "esp32" and self._drvstatus != True:
+            if sys.platform != "esp32" and self._drvstatus is not True:
                 self.status = 2
                 break
             if self.tank.empty:
@@ -169,7 +170,7 @@ class Pump:
                     count += 1
 
             sleep(1)
-        
+
         if sys.platform == "esp32":
             self.pin_power.value(0)
         else:
@@ -179,17 +180,17 @@ class Pump:
 
     @property
     def error(self):
-        return (self.status == 2)
+        """Check for error condition."""
+        return self.status == 2
 
     @property
     def status_str(self):
         """Get status of last pump activation as string."""
         if self.status == 0:
             return "o.k."
-        elif self.status == 1:
+        if self.status == 1:
             return "tank empty"
-        else:
-            return "error"
+        return "error"
 
     @property
     def state(self):
@@ -202,7 +203,9 @@ class Pump:
         (self.busy, self.timestamp) = var
 
 #    def __str__(self):
-#        return ("{}Pin# driver control: {:2}, Pin# driver status: {:2}, Status: {:>10}, Busy: {}, Timestamp: {}"
-#                .format((self.name + ' ') if (self.name != '') else '', self.p_power, self.p_status,
-#                        self.status_str, self.busy, self.timestamp))
-#
+#        return ("{}Pin# driver control: {:2},
+#                   Pin# driver status: {:2},
+#                   Status: {:>10}, Busy: {},
+#                   Timestamp: {}"
+#                .format((self.name + ' ') if (self.name != '') else '', self.p_power,
+#                        self.p_status, self.status_str, self.busy, self.timestamp))
