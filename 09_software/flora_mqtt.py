@@ -283,7 +283,7 @@ class FloraMQTT:
         """
         val = int(msg.payload)
         print_line('MQTT message "man_irr_cmd({})" received'.format(val), sd_notify=True)
-        if ((val == 1) or (val == 2)):
+        if val in (1, 2):
             idx = val - 1
             if (pump.pumps[idx].busy):
                 print_line('Pump #{} already busy ({:s}), ignoring request'
