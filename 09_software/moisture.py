@@ -24,6 +24,7 @@
 # -
 #
 ###############################################################################
+"""Moisture sensor module."""
 
 import sys
 import config as cfg
@@ -79,8 +80,6 @@ class Moisture:
 
             # set 9 bit return values (returned range 0-511)
             self._adc.width(ADC.WIDTH_9BIT) # pylint: disable=E0601
-
-
 
     @property
     def moisture(self):
