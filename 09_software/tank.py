@@ -121,10 +121,9 @@ class Tank:
         """
         if self.empty:
             return 0
-        elif self.low:
+        if self.low:
             return 1
-        else:
-            return 2
+        return 2
 
 #    def __str__(self):
 #        if (self.name != ""):
