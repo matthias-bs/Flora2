@@ -426,8 +426,7 @@ def main():
                             flora_mqtt.client.publish(config.base_topic_flora + '/' + s, sensor.sensors[s].data,
                                                     qos = 1, retain=cfg.MQTT_DATA_RETAIN)
                             break
-                        else:
-                            print_line("Reading MiFlora failed!")
+                        print_line("Reading MiFlora failed!")
 
                     miflora_ble.disconnect()
                     if miflora_ble.wait_for_connection(False, cfg.BLE_TIMEOUT):
