@@ -38,7 +38,7 @@
 
 import sys
 import json
-import pump as m_pump
+import pump
 
 # https://pypi.org/project/micropython-umqtt.robust2/
 from umqtt.robust2 import MQTTClient
@@ -285,14 +285,14 @@ class FloraMQTT:
         print_line('MQTT message "man_irr_cmd({})" received'.format(val), sd_notify=True)
         if ((val == 1) or (val == 2)):
             idx = val - 1
-            if (m_pump.pumps[idx].busy):
+            if (pump.pumps[idx].busy):
                 print_line('Pump #{} already busy ({:s}), ignoring request'
-                        .format(val, "manual" if (m_pump.pumps[idx].busy == PUMP_BUSY_MAN) else "auto"),
+                        .format(val, "manual" if (pump.pumps[idx].busy == PUMP_BUSY_MAN) else "auto"),
                         sd_notify=True)
                 return
 
             client.publish(config.base_topic_flora + '/man_irr_stat', str(val), qos = 1)
-            m_pump.pumps[idx].busy = PUMP_BUSY_MAN
+            pump.pumps[idx].busy = PUMP_BUSY_MAN
 
 
     def mqtt_man_irr_duration_ctrl(self, client, _userdata, msg):
