@@ -136,7 +136,7 @@ from time import sleep
 
 from wifi import wifi_manager
 import miflora
-from miflora import Mi_Flora
+from miflora import MiFlora
 import machine
 import ntptime
 import uerrno
@@ -405,7 +405,7 @@ def main():
         if (config.sensor_interface == 'ble'):
             try:
                 ble = BLE()
-                miflora_ble = Mi_Flora(ble)
+                miflora_ble = MiFlora(ble)
             except OSError as exc:
                 print_line(f'Bluetooth LE exception: {uerrno.errorcode[exc.errno]}', error=True, sd_notify=True)
                 print_line('Cannot access MiFlora sensor(s).')

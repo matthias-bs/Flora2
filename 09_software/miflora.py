@@ -1,6 +1,6 @@
 ###############################################################################
 # miflora.py
-# 
+#
 # MicroPython library for Xiaomi Mi Flora (aka. flower care) BLE plant sensors
 # Copyright (C) 04/2021 Matthias Prinke
 #
@@ -31,7 +31,7 @@
 #
 # The code was tested with MicroPython V1.15
 # on ESP32 (build esp32-20210418-v1.15.bin)
-# with Mi Flora Firmware V3.2.2 
+# with Mi Flora Firmware V3.2.2
 #
 # Please refer to https://github.com/matthias-bs/MicroPython-MiFlora
 # for updates/bug fixes.
@@ -62,16 +62,16 @@
 # 20250403 Fixed/masked pylint errors/warnings
 #
 # Backlog:
-# 
-# - 
+#
+# -
 #
 ###############################################################################
+"""MiFlora plant sensor module."""
 
-
-import ubluetooth # pylint: disable=unused-import
 import time
 import struct
 import binascii
+import ubluetooth # pylint: disable=unused-import
 
 from micropython import const
 
@@ -82,7 +82,7 @@ VERBOSITY = 0
 # - Android App "nRF Connect"
 #
 # (Example:)
-#miflora_sensors = [ 
+#miflora_sensors = [
 #    bytes(b'\xC4\x7C\x8D\x66\xA5\x3D')
 #    bytes(b'\xC4\x7C\x8D\x66\xA4\xD5'), # #4
 #    bytes(b'\xC4\x7C\x8D\x66\xA1\xEA'), # #3
@@ -90,17 +90,18 @@ VERBOSITY = 0
 #    bytes(b'\x80\xEA\xCA\x88\xFE\xED')  # #1
 #]
 
-# If SCAN_DEVICES == True, the demo functions start with scanning for devices and the device name and
-# the RSSI are retrieved from the scan results. Otherwise the demo functions start with connecting to
-# the devices. 
+# If SCAN_DEVICES == True, the demo functions start with scanning for devices and the device name
+# and the RSSI are retrieved from the scan results. Otherwise the demo functions start with
+# connecting to the devices.
 #SCAN_DEVICES = True
 
-# The discovery methods are not required for Miflora, because the Services / Characteristics / Value Handles
-# are known in advance (see 'References' in the file header), but might be useful in other BLE applications. 
-# If _DISCOVER_SERVICES == True, BLE.gattc_discover_services() is called in _IRQ_PERIPHERAL_CONNECT state,
-#_DISCOVER_SERVICES = False
-# If _DISCOVER_CHARACTERISTICS == True, BLE.gattc_discover_characteristics() is called in _IRQ_GATTC_SERVICE_DONE state,
-#_DISCOVER_CHARACTERISTICS = False
+# The discovery methods are not required for Miflora, because the Services / Characteristics /
+# Value Handles are known in advance (see 'References' in the file header), but might be useful in
+# other BLE applications.
+# If _DISCOVER_SERVICES == True, BLE.gattc_discover_services() is called in
+# _IRQ_PERIPHERAL_CONNECT state, _DISCOVER_SERVICES = False
+# If _DISCOVER_CHARACTERISTICS == True, BLE.gattc_discover_characteristics() is called in
+# _IRQ_GATTC_SERVICE_DONE state, _DISCOVER_CHARACTERISTICS = False
 
 
 # If AUTO_MODE is enabled, the BLE state machine is started with
@@ -205,7 +206,7 @@ S_MODE_CHANGE_DONE    = const(5)
 S_READ_SENSOR_DONE    = const(6)
 
 
-class Mi_Flora:
+class MiFlora:
     """
     MiFlora Flower Care Bluetooth Low Energy (BLE) Driver
 
@@ -256,7 +257,7 @@ class Mi_Flora:
         self._start_handle = None
         self._end_handle = None
         self._value_handle = None
-        
+
         # Handled by _reset()
         self.state       = S_INIT
         self.search_addr = None
@@ -300,7 +301,7 @@ class Mi_Flora:
         self.light       = None
         self.moist       = None
         self.cond        = None
-        
+
         # Cached name and address from a successful scan.
         self._addr_type  = None
         self._addr       = None
@@ -316,7 +317,7 @@ class Mi_Flora:
         self._char_done_callback = None
         self._read_callback      = None
         self._write_callback     = None
-         
+
         # Persistent callback for when new data is notified from the device.
         self._notify_callback = None
 
@@ -332,9 +333,10 @@ class Mi_Flora:
 
         Parameters:
             text (string):    string to be printed (including formatted variables, if desired)
-            debuglevel (int): debuglevel must be less than or equal VERBOSITY, otherwise text will not be printed
+            debuglevel (int): debuglevel must be less than or equal VERBOSITY,
+                              otherwise text will not be printed
         """
-        if (debuglevel <= VERBOSITY):
+        if debuglevel <= VERBOSITY:
             print(text)
 
     def _irq(self, event, data):
@@ -345,20 +347,21 @@ class Mi_Flora:
 
         Parameters:
             event (int):  interrupt request ID
-            data (tuple): event specific data as tuple  
+            data (tuple): event specific data as tuple
         """
 #        self._debug("bt_irq - event: {}".format(event), 3)
-        
+
         if event == _IRQ_SCAN_RESULT:
 #            self._debug("bt irq - scan result", 2)
             # A single scan result.
             addr_type, addr, adv_type, rssi, adv_data = data
-            _addr_type = 'Public' if (addr_type == ADDR_TYPE_PUBLIC) else 'Random' 
+            _addr_type = 'Public' if (addr_type == ADDR_TYPE_PUBLIC) else 'Random'
             _addr = bytes(addr)
-            _addr = binascii.hexlify(_addr)            
+            _addr = binascii.hexlify(_addr)
             _adv_data = bytes(adv_data)
 
-            if adv_type in (_ADV_IND, _ADV_DIRECT_IND, _ADV_SCAN_RSP) and bytes(addr) == self.search_addr:
+            if adv_type in (_ADV_IND, _ADV_DIRECT_IND, _ADV_SCAN_RSP) and \
+               bytes(addr) == self.search_addr:
                 # Found a potential device, remember it and stop scanning.
                 self._addr_type = addr_type
                 self.rssi = rssi
@@ -396,7 +399,7 @@ class Mi_Flora:
                     self._conn_callback = None
                 if AUTO_MODE:
                     self.read_firmware(callback=self.read_firmware_done)
-        
+
         elif event == _IRQ_PERIPHERAL_DISCONNECT:
             # Disconnect (either initiated by us or the remote end).
             conn_handle, _, _ = data
@@ -408,12 +411,14 @@ class Mi_Flora:
             # Connected device returned a service.
 #            self._debug("bt irq - gattc service result", 2)
             conn_handle, start_handle, end_handle, uuid = data
-            
+
             if conn_handle == self._conn_handle:
-#                self._debug("{} -> service handle: {}...{}".format(uuid, start_handle, end_handle), 1)
+#                self._debug("{} -> service handle: {}...{}"
+#                            .format(uuid, start_handle, end_handle), 1)
                 self.services[str(uuid)] = start_handle, end_handle
                 if uuid == self.search_service:
-#                    self._debug("Wanted service {} has been discovered!".format(self.search_service), 1)
+#                    self._debug("Wanted service {} has been discovered!"
+#                                .format(self.search_service), 1)
                     self._start_handle = start_handle
                     self._end_handle   = end_handle
 
@@ -424,12 +429,12 @@ class Mi_Flora:
             if self._serv_done_callback:
                 self._serv_done_callback() # pylint: disable=not-callable
                 self._serv_done_callback = None
-                    
+
         elif event == _IRQ_GATTC_CHARACTERISTIC_RESULT:
             # Connected device returned a characteristic.
 #            self._debug("bt irq - gattc characteristic result", 2)
             conn_handle, def_handle, value_handle, properties, uuid = data
-            
+
             if conn_handle == self._conn_handle:
 #                self._debug("{}; def_handle: {}; value_handle: {}; properties: {}".format(
 #                    uuid, def_handle, value_handle, properties), 1
@@ -477,7 +482,7 @@ class Mi_Flora:
 
         elif event == _IRQ_GATTC_NOTIFY:
 #            self._debug("bt irq - gattc notify", 2)
-            
+
             conn_handle, value_handle, notify_data = data
             if conn_handle == self._conn_handle and value_handle == self._value_handle:
                 self._update_value(notify_data)
@@ -491,7 +496,9 @@ class Mi_Flora:
         """
         Find all available devices.
 
-        See https://docs.micropython.org/en/latest/library/ubluetooth.html for gap_scan() parameters.
+        See
+        https://docs.micropython.org/en/latest/library/ubluetooth.html
+        for gap_scan() parameters.
 
         Parameters:
             callback (function): callback to be invoked in _IRQ_SCAN_DONE if the desired device
@@ -515,14 +522,14 @@ class Mi_Flora:
             addr_type (int):     address type (PUBLIC or RANDOM)
             addr (bytes):        BLE MAC address
             callback (function): callback to be invoked in _IRQ_PERIPHERAL_CONNECT
-            
+
         Returns:
-            bool: True  if valid address type and address was available and gap_connect() was called without error
-                        (not connected yet!),
+            bool: True  if valid address type and address was available and gap_connect() 
+                        was called without error (not connected yet!),
                   False otherwise
         """
 #        self._debug("gap_connect()", 1)
-        if not(addr_type is None) and not(addr is None):
+        if not addr_type is None and not addr is None:
             # if provided, use address type and address provided as parameters
             # (otherwise use address type and address from preceeding scan)
             self._addr_type = addr_type
@@ -538,7 +545,7 @@ class Mi_Flora:
             return True
         except OSError:
             return False
-        
+
     def disconnect(self):
         """
         Disconnect from current device and reset object's attributes.
@@ -551,15 +558,15 @@ class Mi_Flora:
         except OSError:
             pass
         self._reset()
-        
+
     def read(self, callback):
         """
         Generic read access.
-        
+
         Issues an (asynchronous) read of _value_handle, will invoke callback with data.
-        
+
         See https://docs.micropython.org/en/latest/library/ubluetooth.html for gattc_read()
-        
+
         Parameters:
             callback (function): callback to be invoked in _IRQ_GATTC_READ_RESULT
         """
@@ -575,12 +582,12 @@ class Mi_Flora:
     def read_firmware(self, callback):
         """
         Read firmware version and battery status.
-        
-        Issues an (asynchronous) read from _value_handle = _HANDLE_READ_VERSION_BATTERY, 
+
+        Issues an (asynchronous) read from _value_handle = _HANDLE_READ_VERSION_BATTERY,
         will invoke callback with data.
-        
+
         See https://docs.micropython.org/en/latest/library/ubluetooth.html for gattc_read()
-        
+
         Parameters:
             callback (function): callback to be invoked in _IRQ_GATTC_READ_RESULT
         """
@@ -593,16 +600,16 @@ class Mi_Flora:
             self._ble.gattc_read(self._conn_handle, self._value_handle)
         except OSError:
             pass
-   
+
     def mode_change(self, callback):
         """
         Change data mode to allow reading of sensor data.
-        
-        Issues an (asynchronous) write to _value_handle = _DATA_MODE_CHANGE, 
+
+        Issues an (asynchronous) write to _value_handle = _DATA_MODE_CHANGE,
         will invoke callback after completion.
-        
+
         See https://docs.micropython.org/en/latest/library/ubluetooth.html for gattc_write()
-        
+
         Parameters:
             callback (function): callback to be invoked in _IRQ_GATTC_WRITE_DONE
         """
@@ -613,16 +620,16 @@ class Mi_Flora:
             self._ble.gattc_write(self._conn_handle, self._value_handle, _DATA_MODE_CHANGE, 1)
         except OSError:
             pass
-    
+
     def read_sensor(self, callback):
         """
         Read sensor data.
-        
-        Issues an (asynchronous) read from _value_handle = _HANDLE_READ_SENSOR_DATA, 
+
+        Issues an (asynchronous) read from _value_handle = _HANDLE_READ_SENSOR_DATA,
         will invoke callback with data.
-        
+
         See https://docs.micropython.org/en/latest/library/ubluetooth.html for gattc_write()
-        
+
         Parameters:
             callback (function): callback to be invoked in _IRQ_GATTC_READ_RESULT
         """
@@ -635,7 +642,7 @@ class Mi_Flora:
             self._ble.gattc_read(self._conn_handle, self._value_handle)
         except OSError:
             pass
-    
+
     ###############################################################################
     # Callback methods
     ###############################################################################
@@ -643,10 +650,10 @@ class Mi_Flora:
     def scan_done(self, _addr_type, _addr, _name):
         """
         Callback for scan().
-        
+
         The parameters are those of the device which matched the search criterion.
         (In this case the address.)
-        
+
         Parameters:
             addr_type (int): address type (PUBLIC or RANDOM)
             addr (bytes):    BLE MAC address
@@ -658,12 +665,12 @@ class Mi_Flora:
     def read_firmware_done(self, data):
         """
         Callback for read_firmware().
-        
+
         The battery level and the firmware version are copied from the read data.
-        
+
         Parameters:
             data (memoryview): read data
-        """        
+        """
 #        self._debug("read_firmware_done()", 1)
         data = bytes(data)
         self.battery = data[0]
@@ -673,19 +680,20 @@ class Mi_Flora:
     def mode_change_done(self):
         """
         Callback for mode_change().
-        """        
+        """
 #        self._debug("mode_change_done()", 1)
         self.state = S_MODE_CHANGE_DONE
 
     def read_sensor_done(self, data):
         """
         Callback for read_sensor().
-        
-        The sensor data - temperature, light intensity, moisture and conductivity - are copied from the read data.
-        
+
+        The sensor data - temperature, light intensity, moisture and conductivity -
+        are copied from the read data.
+
         Parameters:
             data (memoryview): read data
-        """        
+        """
 #        self._debug("read_sensor_done()", 1)
         data = bytes(data)
 #        self._debug("data(): {}".format(data), 3)
@@ -731,7 +739,7 @@ class Mi_Flora:
                   False timeout ocurred.
         """
         t0 = time.ticks_ms() # pylint: disable=no-member
-        
+
         while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms: # pylint: disable=no-member
             if self.is_connected() == status:
                 return True
@@ -762,24 +770,24 @@ class Mi_Flora:
     ###############################################################################
     # Helper methods
     ###############################################################################
-    
+
     def _update_value(self, data):
         """
         Update value from a notification or a read access.
 
         Parameters:
             data (memoryview): notification/read data (payload)
-            
+
         Returns:
             memoryview: object in memory containing payload data
         """
 #        self._debug("_update_value()", 2)
         self._value = data
         return self._value
-            
+
     def value(self):
         """
-        Read access function for '_value'. (?) 
+        Read access function for '_value'. (?)
         """
         return self._value
 ### END class MiFlora
