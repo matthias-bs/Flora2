@@ -250,7 +250,7 @@ def main():
 
     # Pump objects
     for i in range(2):
-        pump.pumps.append(pump.Pump(cfg.GPIO_PUMP_POWER[i], cfg.GPIO_PUMP_STATUS[i], tank.tank))
+        pump.pumps.append(pump.Pump(flora_mqtt.client, cfg.GPIO_PUMP_POWER[i], cfg.GPIO_PUMP_STATUS[i], tank.tank))
 
 
     # Get list of sensor names from config file
@@ -267,7 +267,7 @@ def main():
     gcollect()
 
     for s in sensor_list:
-        sensor.sensors[s] = sensor.Sensor(sensor, config.mqtt_msg_timeout, config.sensor_batt_low)
+        sensor.sensors[s] = sensor.Sensor(s, config.mqtt_msg_timeout, config.sensor_batt_low)
         # check if config file contains a section for this sensor
         if (not(config.cp.has_section(s))):
             print_line(f'The configuration file "config.ini" has a sensor named {s} in the [Sensors] section,',
@@ -322,7 +322,7 @@ def main():
 #        meminfo('MQTTClient')
 
     # Initialize irrigation
-    irrigation_obj = irrigation.Irrigation()
+    irrigation_obj = irrigation.Irrigation(flora_mqtt.client)
 
     if config.sensor_interface == 'mqtt':
         # Wait until MQTT data is valid (this may take a while...)
@@ -339,9 +339,9 @@ def main():
         print_line('<-- Initial reception of MQTT sensor data succeeded.', sd_notify=True)
 
     for s in sensor.sensors:
-        flora_mqtt.client.publish_discovery_sensor(sensor.sensors[s].name)
+        flora_mqtt.publish_discovery_sensor(sensor.sensors[s].name)
 
-    flora_mqtt.client.publish_discovery_sensor("tank")
+    flora_mqtt.publish_discovery_sensor("tank")
 
     meminfo('Start Main Loop')
 
@@ -422,7 +422,7 @@ def main():
                             #print(f"Version: {miflora_ble.version}")
                             print_line(f"Temperature: {miflora_ble.temp}°C Light: {miflora_ble.light}lx " + \
                                        f"Moisture: {miflora_ble.moist}% Conductivity: {miflora_ble.cond}µS/cm")
-                            s.sensors[sensor].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
+                            sensor.sensors[s].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
                             flora_mqtt.client.publish(config.base_topic_flora + '/' + s, sensor.sensors[s].data,
                                                     qos = 1, retain=cfg.MQTT_DATA_RETAIN)
                             break
