@@ -37,8 +37,6 @@
 
 import sys
 from time import sleep
-
-from flora_mqtt import flora_mqtt
 from config import config
 
 if sys.implementation.name == "micropython":
@@ -75,7 +73,7 @@ class Pump:
         status_str (string):    status as string
         name (string):          instance name (for debugging)
     """
-    def __init__(self, pin_pump_power, pin_pump_status, tank, name=""):
+    def __init__(self, mqtt_client, pin_pump_power, pin_pump_status, tank, name=""):
         """
         The constructor for Pump class.
 
@@ -85,6 +83,7 @@ class Pump:
             tank (Tank):           instance of Tank class (to detect empty tank)
             name (string):         instance name (for debugging)
         """
+        self.mqtt_client = mqtt_client
         self.p_power = pin_pump_power
         self.p_status = pin_pump_status
         self.tank = tank
@@ -165,7 +164,7 @@ class Pump:
             if sys.implementation.name == "micropython":
                 if count == config.mqtt_keepalive:
                     count = 0
-                    flora_mqtt.client.ping()
+                    self.mqtt_client.ping()
                 else:
                     count += 1
 
