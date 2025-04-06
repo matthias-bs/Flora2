@@ -34,7 +34,6 @@
 ###############################################################################
 
 import time
-from flora_mqtt import flora_mqtt 
 import pump
 import sensor
 from print_line import print_line
@@ -45,10 +44,11 @@ from config import config, VERBOSITY
 # Irrigation class - Manual and automatic irrigation control
 ###############################################################################
 class Irrigation:
-    def __init__(self):
+    def __init__(self, mqtt_client):
         """
         The constructor for Irrigation class.
         """
+        self.mqtt_client = mqtt_client
 
     ###################################################################################################
     # Handle manual irrigation
@@ -65,7 +65,7 @@ class Irrigation:
                            console=True, sd_notify=True)
                 p.power_on(config.irr_duration_man)
                 p.busy = 0
-                flora_mqtt.client.publish(config.base_topic_flora + '/man_irr_stat', str(0), qos = 1)
+                self.mqtt_client.publish(config.base_topic_flora + '/man_irr_stat', str(0), qos = 1)
                 print_line(f'<-- Running pump #{i+1} finished, Status: {p.status_str}',
                             console=True, sd_notify=True)
 
@@ -132,7 +132,7 @@ class Irrigation:
         
         schedule = [False, False]
         for i, p in enumerate(pump.pumps):
-            if activate[p]:
+            if activate[i]:
                 if (time.time() - p.timestamp) < config.irr_rest:
                     # All sensor values are within range, but time since last irrigation (irr_rest)
                     # has not expired yet -> bailing out
