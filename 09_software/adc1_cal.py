@@ -3,7 +3,7 @@
 #
 # This module provides the ADC1Cal class
 #
-# MicroPython ESP32 ADC1 conversion using V_ref calibration value 
+# MicroPython ESP32 ADC1 conversion using V_ref calibration value
 #
 # The need for calibration is described in [1] and [4].
 #
@@ -27,9 +27,9 @@
 #
 # The ESP32 documentation is very fuzzy concerning the ADC input range,
 # full scale value or LSB voltage, respectively.
-# The MicroPython quick reference [3] is also (IMHO) quite misleading. 
-# A good glimpse is provided in [4]. 
-# 
+# The MicroPython quick reference [3] is also (IMHO) quite misleading.
+# A good glimpse is provided in [4].
+#
 # - "Per design the ADC reference voltage is 1100 mV, however the true
 #   reference voltage can range from 1000 mV to 1200 mV amongst different
 #   ESP32s." [1]
@@ -81,18 +81,21 @@
 #          Fixed usage example
 # 20210512 Modified class ADC1Cal to inherit from machine.ADC class
 #          All bit widths are supported now
-#          Removed rounding of the result in voltage()   
+#          Removed rounding of the result in voltage()
 # 20210514 Added support of 0/2.5/6 dB attenuation
 # 20250403 Code improvements (pylint)
 #
 # Backlog:
 # - add support of "Two Point Calibration"
 # - add support of 11 dB attenuation
-#   (What's the point in the 11dB setting with its crooked characteristics?) 
+#   (What's the point in the 11dB setting with its crooked characteristics?)
 #
 ###############################################################################
+"""Calibrate ADC1 using V_ref calibration value."""
 
+from time import sleep
 import machine
+from machine import Pin
 from machine import ADC
 from micropython import const
 
@@ -100,10 +103,10 @@ from micropython import const
 # https://github.com/espressif/esp-idf/blob/master/components/soc/esp32/include/soc/soc.h
 _DR_REG_EFUSE_BASE      = const(0x3ff5A000)
 
-# Constants from 
+# Constants from
 # https://github.com/espressif/esp-idf/blob/master/components/soc/esp32/include/soc/efuse_reg.h
 _EFUSE_ADC_VREF         = const(0x0000001F)
-_EFUSE_BLK0_RDATA4_REG  = (_DR_REG_EFUSE_BASE + 0x010)
+_EFUSE_BLK0_RDATA4_REG  = _DR_REG_EFUSE_BASE + 0x010
 
 # Constants from
 # esp_adc_cal_esp32.c
@@ -132,7 +135,8 @@ class ADC1Cal(machine.ADC):
         _div (float):       voltage divider (V_in = V_meas * div)
         _width (int):       encoded width of ADC result (0...3)
         _samples (int):     number of ADC samples for averaging
-        vref (int):         ADC reference voltage in mV (from efuse calibration data or supplied by programmer)
+        vref (int):         ADC reference voltage in mV 
+                            (from efuse calibration data or supplied by programmer)
         _coeff_a (float):   conversion function coefficient 'a'
         _coeff_b (float):   conversion function coefficient 'b'
     """
@@ -160,43 +164,44 @@ class ADC1Cal(machine.ADC):
     def atten(self, attn):
         """
         Select attenuation of input signal
-        
+
         Parameter identical to ADC.atten()
-        
+
         Currently ADC.ATTN_11DB is not supported!
 
         Parameters:
             attenuation (int): ADC.ATTN_0DB / ADC.ATTN_2_5DB / ADC.ATTN_6DB /  ADC.ATTN_11DB
-        """        
+        """
         assert (attn != ADC.ATTN_11DB), "Currently ADC.ATTN_11DB is not supported!"
         super().atten(attn)
         self._coeff_a = self.vref * _ADC1_VREF_ATTEN_SCALE[attn] / _ADC_12_BIT_RES
         self._coeff_b = _ADC1_VREF_ATTEN_OFFSET[attn]
         self._atten = attn
-        
+
     def width(self, adc_width):
         """
         Select bit width of conversion result
-        
+
         Parameter identical to ADC.width()
 
         Parameters:
             adc_width (int): ADC.WIDTH_9BIT / ADC.WIDTH_10BIT / BITADC.WIDTH_11BIT / ADC.WIDTH_12BIT
-        """        
-        assert (adc_width >= 0 and adc_width < 4), "Expecting ADC_WIDTH9 (0), ADC_WIDTH10 (1), ADC_WIDTH11 (2), or ADC_WIDTH (3)"
+        """
+        assert (adc_width >= 0 and adc_width < 4), \
+               "Expecting ADC_WIDTH9 (0), ADC_WIDTH10 (1), ADC_WIDTH11 (2), or ADC_WIDTH (3)"
         super().width(adc_width)
         self._width = adc_width
-            
+
     def read_efuse_vref(self):
         """
         Read V_ref calibration value from efuse (i.e. read SOC hardware register)
 
         Returns:
             int: calibrated ADC reference voltage (V_ref) in mV
-        """        
+        """
         # eFuse stores deviation from ideal reference voltage
         ret = _VREF_OFFSET  # Ideal vref
-        
+
         # GET_REG_FIELD():
         # https://github.com/espressif/esp-idf/blob/master/components/soc/esp32/include/soc/soc.h
         # Bit positions:
@@ -204,7 +209,7 @@ class ADC1Cal(machine.ADC):
         # EFUSE_RD_ADC_VREF : R/W ;bitpos:[12:8] ;default: 5'b0
         bits = (machine.mem32[_VREF_REG] >> 8) & _VREF_MASK
         ret += self.decode_bits(bits, _VREF_MASK, _VREF_FORMAT) * _VREF_STEP_SIZE
-        
+
         return ret # ADC Vref in mV
 
     def decode_bits(self, bits, mask, is_twos_compl):
@@ -215,23 +220,23 @@ class ADC1Cal(machine.ADC):
             bits (int):                bit-field value
             mask (int):                bit mask
             is_twos_complement (bool): True - two's complement / False: sign-magnitude
-            
+
         Returns:
             int: decoded value
-        """      
-        if (bits & ~(mask >> 1) & mask): # Check sign bit (MSB of mask)
+        """
+        if bits & ~(mask >> 1) & mask: # Check sign bit (MSB of mask)
             # Negative
-            if (is_twos_compl):
+            if is_twos_compl:
                 ret = -(((~bits) + 1) & (mask >> 1))  # 2's complement
             else:
                 ret = -(bits & (mask >> 1))     # Sign-magnitude
-        else: 
+        else:
             # Positive
             ret = bits & (mask >> 1)
-    
+
         return ret
 
-    
+
     @property
     def voltage(self):
         """
@@ -241,51 +246,50 @@ class ADC1Cal(machine.ADC):
             float: voltage [mV]
         """
         assert (self._atten is not None), "Currently ADC.ATTN_11DB is not supported!"
-        
+
         raw_val = 0
-        
+
         # Read and accumulate ADC samples
         for _ in range(self._samples):
             raw_val += self.read()
-        
+
         # Calculate average
         raw_val = int(round(raw_val / self._samples))
-        
+
         # Extend result to 12 bits (required by calibration function)
         raw_val <<= (3 - self._width)
-        
+
         # Apply calibration function
-        voltage = (((self._coeff_a * raw_val) + _LIN_COEFF_A_ROUND) / _LIN_COEFF_A_SCALE) + self._coeff_b
-        
+        voltage = (((self._coeff_a * raw_val) + _LIN_COEFF_A_ROUND) / _LIN_COEFF_A_SCALE) + \
+                  self._coeff_b
+
         # Apply external input voltage divider
         voltage = voltage / self._div
-        
+
         return voltage
 
-    
+
     def __str__(self):
         _atten = ["0dB", "2.5dB", "6dB", "11dB"]
-        if (self.name != ""):
-            name_str = "Name: {} ".format(self.name)
+        if self.name != "":
+            name_str = f"Name: {self.name} "
         else:
             name_str = ""
-        
+
         raw_val = self.read()
-        
-        return ("{} width: {:2}, attenuation: {:>5}, raw value: {:4}, value: {}"
-                .format(name_str, 9+self._width, _atten[self._atten], raw_val, self.voltage))
 
+        return f"{name_str} width: {9+self._width:2}, attenuation: {_atten[self._atten]:>5},\
+                 raw value: {raw_val:4}, value: {self.voltage}"
 
-from time import sleep
-from machine import Pin
 
 if __name__ == "__main__":
     ADC_PIN   = 35                # ADC input pin no.
-    VREF      = 1065              # V_ref in mV (device specific value -> espefuse.py --port <port> adc_info)
-#    DIV       = 100 / (100 + 200) # (R1 / R1 + R2) -> V_meas = V(R1 + R2); V_adc = V(R1)  
+    VREF      = 1065              # V_ref in mV (device specific value ->
+                                  # espefuse.py --port <port> adc_info)
+#    DIV       = 100 / (100 + 200) # (R1 / R1 + R2) -> V_meas = V(R1 + R2); V_adc = V(R1)
     DIV       = 1
     AVERAGING = 10                # no. of samples for averaging
-    
+
     adc_widths = [ADC.WIDTH_9BIT, ADC.WIDTH_10BIT, ADC.WIDTH_11BIT, ADC.WIDTH_12BIT]
     adc_atten  = [ADC.ATTN_0DB, ADC.ATTN_2_5DB, ADC.ATTN_6DB]
 
@@ -303,20 +307,20 @@ if __name__ == "__main__":
         for width in adc_widths:
             # set ADC result width
             ubatt.width(width)
-       
+
             # Print object info
             print(ubatt)
-    
+
     # set ADC result width
     ubatt.width(ADC.WIDTH_10BIT)
-    
+
     # set attenuation
     ubatt.atten(ADC.ATTN_6DB)
-    
+
     print()
-    print('ADC Vref: {:4}mV'.format(ubatt.vref))
+    print(f'ADC Vref: {ubatt.vref:4}mV')
     print()
-    
+
     while 1:
-        print('Voltage:  {:4.1f}mV'.format(ubatt.voltage))
+        print(f'Voltage:  {ubatt.voltage:4.1f}mV')
         sleep(5)
