@@ -37,7 +37,7 @@
 import json
 
 from config import config
-import sensor as m_sensor
+import sensor
 import pump
 import tank
 from time import localtime
@@ -70,7 +70,7 @@ class Report:
         
         # Find minimum light_irr value of all sensors
         self.min_light_irr = 1000000
-        for _, s in m_sensor.sensors.items():
+        for _, s in sensor.sensors.items():
             self.min_light_irr = min(self.min_light_irr, s.light_irr)
 
         self.sensor_settings()
@@ -96,7 +96,7 @@ class Report:
         """
         Add sensor (and plant) settings / status to report.
         """
-        for _, s in m_sensor.sensors.items():
+        for _, s in sensor.sensors.items():
             self.data[s.name] = {}
             self.data[s.name]['settings'] = {}
             self.data[s.name]['settings']['plant'] = s.plant
