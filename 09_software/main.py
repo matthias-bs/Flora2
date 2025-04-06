@@ -155,16 +155,16 @@ from config import config, MEMINFO, VERBOSITY
 from flora_mqtt import flora_mqtt
 from garbage_collect import gcollect, meminfo
 
-import irrigation as m_irrigation
-import moisture as m_moisture
+import irrigation
+import moisture
 from print_line import print_line
-import report as m_report
+import report
 import sensor
-import sensor_power as m_sensor_power
+import sensor_power
 import pump
 import tank
-import temperature as m_temperature
-import weather as m_weather
+import temperature
+import weather
 
 # Micropython esp8266/esp32
 # This code returns the Central European Time (CET) including daylight saving
@@ -243,7 +243,7 @@ def main():
         GPIO.setmode(GPIO.BCM)
 
     # Sensor power control object
-    sensor_power = m_sensor_power.SensorPower(cfg.GPIO_SENSOR_POWER)
+    sensor_power_obj = sensor_power.SensorPower(cfg.GPIO_SENSOR_POWER)
 
     # Tank object (fill level sensors)
     tank.tank = tank.Tank(cfg.GPIO_TANK_SENS_LOW, cfg.GPIO_TANK_SENS_EMPTY)
@@ -305,9 +305,9 @@ def main():
                     error=True, sd_notify=True)
             sys.exit(1)
 
-        moisture = {}
+        moisture_obj = {}
         for i, s in enumerate(sensor_list):
-            moisture[s] = m_moisture.Moisture(cfg.MOISTURE_ADC_PINS[i], cfg.MOISTURE_MIN_VAL, cfg.MOISTURE_MAX_VAL)
+            moisture_obj[s] = moisture.Moisture(cfg.MOISTURE_ADC_PINS[i], cfg.MOISTURE_MIN_VAL, cfg.MOISTURE_MAX_VAL)
 
     # Init MQTT client
     #m_mqtt.MQTTClient.DEBUG = True
@@ -322,7 +322,7 @@ def main():
 #        meminfo('MQTTClient')
 
     # Initialize irrigation
-    irrigation = m_irrigation.Irrigation()
+    irrigation_obj = irrigation.Irrigation()
 
     if config.sensor_interface == 'mqtt':
         # Wait until MQTT data is valid (this may take a while...)
@@ -382,12 +382,12 @@ def main():
         # END FIXME
 
         if (sys.platform == "esp32"):
-            sensor_power.enable(True)
+            sensor_power_obj.enable(True)
             sleep(1)
 
         if (config.sensor_interface == 'local'):
             for s in sensor_list:
-                valid, moist_val = moisture[sensor].moisture
+                valid, moist_val = moisture_obj[s].moisture
                 if (valid):
                     sensor.sensors[s].update_moisture_sensor(moist_val)
                     data = {}
@@ -395,7 +395,7 @@ def main():
                     json_data = json.dumps(data)
                     flora_mqtt.client.publish(config.base_topic_flora + '/' + sensor, json_data,
                                                qos = 1, retain=cfg.MQTT_DATA_RETAIN)
-                    print_line(f"{sensor} - Moisture: {moist_val}%")
+                    print_line(f"{s} - Moisture: {moist_val}%")
                 else:
                     print_line(f'Moisture sensor "{s}" value={moist_val} - out of range. Check connection and power settings.',
                                error=True, sd_notify=True)
@@ -444,9 +444,9 @@ def main():
 
         # Read temperature sensor (optional)
         if config.temperature_sensor:
-            temperature = m_temperature.Temperature(cfg.GPIO_TEMP_SENS)
-            if (temperature.devices > 0):
-                temp = temperature.temperature()
+            temperature_obj = temperature.Temperature(cfg.GPIO_TEMP_SENS)
+            if (temperature_obj.devices > 0):
+                temp = temperature_obj.temperature()
                 #temperature.show_devices()
                 if (config.sensor_interface == 'local'):
                     for s in sensor.sensors:
@@ -455,17 +455,17 @@ def main():
                 flora_mqtt.publish_discovery_sensor("temperature")
                 flora_mqtt.client.publish(config.base_topic_flora + '/temperature',
                                          f'{temp:2.1f}', qos = 1, retain=cfg.MQTT_DATA_RETAIN)
-            del temperature
+            del temperature_obj
             gcollect()
 
         # Read weather sensor (optional)
         if config.weather_sensor:
-            valid, weather = m_weather.weather_data()
+            valid, weather_obj = weather.weather_data()
             if (valid):
                 flora_mqtt.publish_discovery_sensor("weather")
-                print_line(f'Weather sensor - Temperature: {weather["temperature"]}°C, Humidity: {weather["humidity"]}%, ' + \
-                           f'Pressure: {weather["pressure"]}hPa')
-                weather_data = json.dumps(weather)
+                print_line(f'Weather sensor - Temperature: {weather_obj["temperature"]}°C, Humidity: {weather_obj["humidity"]}%, ' + \
+                           f'Pressure: {weather_obj["pressure"]}hPa')
+                weather_data = json.dumps(weather_obj)
                 flora_mqtt.client.publish(config.base_topic_flora + '/weather', weather_data,
                                          qos = 1, retain=cfg.MQTT_DATA_RETAIN)
 
@@ -481,9 +481,9 @@ def main():
         meminfo('Report')
 
         # Send system settings & status via MQTT
-        report = m_report.Report()
-        system = report.gen_report()
-        del report
+        report_obj = report.Report()
+        system = report_obj.gen_report()
+        del report_obj
 
         flora_mqtt.client.publish(config.base_topic_flora + '/system', system, qos = 1, retain=True)
         flora_mqtt.client.send_queue()
@@ -499,13 +499,13 @@ def main():
                                    qos = 1, retain=True)
 
         # Execute manual irrigation (if requested)
-        irrigation.man_irrigation()
+        irrigation_obj.man_irrigation()
 
         flora_mqtt.client.publish(config.base_topic_flora + '/man_irr_stat', '0', qos = 1)
 
         # Execute automatic irrigation
         if (config.auto_irrigation):
-            config.irr_scheduled = irrigation.auto_irrigation()
+            config.irr_scheduled = irrigation_obj.auto_irrigation()
 
         gcollect()
 
@@ -524,7 +524,7 @@ def main():
 
         if (config.daemon_enabled):
             if (sys.platform == "esp32"):
-                sensor_power.enable(False)
+                sensor_power_obj.enable(False)
 
                 # Prevent deep sleep if battery voltage input is disconnected
                 # to simplify debugging/flashing
@@ -537,10 +537,10 @@ def main():
                     flora_mqtt.client.send_queue()
                     flora_mqtt.client.disconnect()
                     sleep(3)
-                    del sensor_power
+                    del sensor_power_obj
                     pump.pumps = []
                     try:
-                        for _, obj in moisture.items():
+                        for _, obj in moisture_obj.items():
                             del obj
                     except NameError:
                         pass
