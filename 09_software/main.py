@@ -543,7 +543,7 @@ def main():
                             del obj
                     except NameError:
                         pass
-                    for obj in s.sensors:
+                    for obj in sensor.sensors:
                         del obj
                     del flora_mqtt.client
                     wifi_manager.deinit()
