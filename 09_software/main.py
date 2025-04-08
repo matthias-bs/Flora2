@@ -531,9 +531,12 @@ def main():
         # Send system settings & status via MQTT
         report_obj = report.Report()
         system = report_obj.gen_report()
-        del report_obj
-
-        flora_mqtt.client.publish(config.base_topic_flora + '/system', system, qos = 1, retain=True)
+        flora_mqtt.client.publish(
+            config.base_topic_flora + '/system',
+            system,
+            qos = 1,
+            retain = True
+        )
         flora_mqtt.client.send_queue()
 
         # Publish status flags/values
