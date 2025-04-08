@@ -35,13 +35,16 @@
 # 20250404 Changed Settings to Config class and added singleton pattern
 #
 # Backlog:
-# - 
+# -
 #
 ###############################################################################
+"""Configuration module for Flora2"""
+
+# pylint: disable=line-too-long
 
 from micropython import const
 
-from ConfigParser import ConfigParser
+from config_parser import ConfigParser
 from secrets import MQTT_USERNAME, MQTT_PASSWORD
 
 ###############################################################################
@@ -81,7 +84,7 @@ PROJECT_URL         = 'https://github.com/matthias-bs/Flora2'
 GPIO_TANK_SENS_LOW   = const(23)
 GPIO_TANK_SENS_EMPTY = const(21)
 GPIO_PUMP_POWER      = [19, 18]
-GPIO_PUMP_STATUS     = [99, 99] # dummy value, driver status not supported 
+GPIO_PUMP_STATUS     = [99, 99] # dummy value, driver status not supported
 GPIO_SENSOR_POWER    = const(27)
 GPIO_TEMP_SENS       = const(5)
 GPIO_I2C_SDA         = const(26)
@@ -109,8 +112,9 @@ MOISTURE_ADC_PINS    = [34, 35, 32, 33]
 MOISTURE_MIN_VAL     = const(1250)
 MOISTURE_MAX_VAL     = const(900)
 UBATT_ADC_PIN        = const(35)           # ACD pin - mutually exclusive with any other use
-UBATT_DIV            = 100/(100+200)       # Voltage divider R1 / (R1 + R2) -> V_meas = V(R1 + R2); V_adc = V(R1)
-MOIST_DIV            = 330/(330+220)       # Voltage divider R1 / (R1 + R2) -> V_meas = V(R1 + R2); V_adc = V(R1)
+# Voltage dividers: R1 / (R1 + R2) -> V_meas = V(R1 + R2); V_adc = V(R1)
+UBATT_DIV            = 100/(100+200)
+MOIST_DIV            = 330/(330+220)
 VREF                 = None                # V_ref in mV or None for eFuse calibration value
 UBATT_SAMPLES        = const(10)           # no. of samples for averaging
 
@@ -132,13 +136,13 @@ class Config (ConfigParser):
     def __init__(self, _config_dir, delimiters, inline_comment_prefixes):
         super().__init__(delimiters=delimiters, inline_comment_prefixes=inline_comment_prefixes)
         self.irr_scheduled = [False, False]
-        
+
         cp = ConfigParser(delimiters, inline_comment_prefixes)
         cp.optionxform = str
-        
+
         # Load configuration file
         cp.read('config.ini')
-        
+
         # General
         self.processing_period  = cp.getint('General', 'processing_period',         fallback=_PROCESSING_PERIOD)
         self.processing_period2 = cp.getint('General', 'processing_period2',        fallback=_PROCESSING_PERIOD2)
@@ -169,7 +173,7 @@ class Config (ConfigParser):
         self.battery_voltage    = cp.getboolean('Sensors', 'battery_voltage',    fallback=False)
         self.plant_sensors      = cp.get('Sensors', 'plant_sensors')
         cp.remove_section('Sensors')
-        
+
         # MQTT
         self.mqtt_keepalive     = cp.getint('MQTT', 'keepalive',       fallback=_MQTT_KEEPALIVE)
         self.mqtt_msg_timeout   = cp.getint('MQTT', 'message_timeout', fallback=_MESSAGE_TIMEOUT)
@@ -187,4 +191,4 @@ class Config (ConfigParser):
 
         self.cp = cp
 
-config = Config('./', delimiters=('=', ), inline_comment_prefixes=('#'))
+config = Config('./', delimiters=('=', ), inline_comment_prefixes='#')
