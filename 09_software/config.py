@@ -33,6 +33,7 @@
 # 20250306 Removed Removed alert/report/email configuration
 # 20240403 Code quality improvements
 # 20250404 Changed Settings to Config class and added singleton pattern
+# 20240408 Updated PROJECT_NAME/_VERSION/_DATE
 #
 # Backlog:
 # -
@@ -60,9 +61,9 @@ BLE_MAX_RETRIES     = const(3)     # max. no. of retries for Bluetooth Low Energ
 BLE_TIMEOUT         = const(12000) # timeout [ms] for Bluetooth Low Energy data access
 BME280_ADDR         = const(0x76)  # I2C bus address for BME280 weather sensor
 
-PROJECT_NAME        = 'flora'
-PROJECT_VERSION     = 'V2.1.1'
-PROJECT_BUILD       = '20240709'
+PROJECT_NAME        = 'flora2'
+PROJECT_VERSION     = 'V3.0.0'
+PROJECT_BUILD       = '20250408'
 PROJECT_URL         = 'https://github.com/matthias-bs/Flora2'
 
 
