@@ -113,9 +113,10 @@
 #          Removed conditional code execution with support of non-micropython
 #          platforms
 # 20250330 Added MQTT discovery messages
-# 20250402 Code improvements
+# 20250402 Coding style improvements
 # 20250404 Changed wifi to Singleton class
 #          Changed flora_mqtt to Singleton class
+# 20250408 Coding style improvements
 #
 # Backlog:
 # - fix MQTT over TLS
@@ -127,6 +128,7 @@
 # - adding Wi-Fi Manager failed due to lack of memory
 #
 ###############################################################################
+"""Flora2 main module"""
 
 import sys
 import json
@@ -142,12 +144,6 @@ import ntptime
 import uerrno
 from bluetooth import BLE
 from machine import reset
-if sys.implementation.name == "micropython":
-    import gc
-if sys.platform == "esp32":
-    import adc1_cal
-else:
-    from gpio import GPIO
 
 # Flora specific modules
 import config as cfg
@@ -166,6 +162,14 @@ import tank
 import temperature
 import weather
 
+if sys.implementation.name == "micropython":
+    import gc
+if sys.platform == "esp32":
+    import adc1_cal
+else:
+    from gpio import GPIO
+
+
 # Micropython esp8266/esp32
 # This code returns the Central European Time (CET) including daylight saving
 # Winter (CET) is UTC+1H Summer (CEST) is UTC+2H
@@ -173,20 +177,35 @@ import weather
 # Ref. formulas : http://www.webexhibits.org/daylightsaving/i.html
 #                 Since 1996, valid through 2099
 def cettime():
-    year = time.localtime()[0]       #get current year
-    HHMarch   = time.mktime((year,3 ,(31-(int(5*year/4+4))%7),1,0,0,0,0,0)) #Time of March change to CEST
-    HHOctober = time.mktime((year,10,(31-(int(5*year/4+1))%7),1,0,0,0,0,0)) #Time of October change to CET
+    """
+    Convert UTC to CET
+
+    Returns:
+       cet (time): Central European Time with daylight saving
+    """
+
+    # Get current year
+    year = time.localtime()[0]
+
+    # Time of March change to CEST
+    hh_march   = time.mktime((year,3 ,(31-(int(5*year/4+4))%7),1,0,0,0,0,0))
+
+    # Time of October change to CET
+    hh_october = time.mktime((year,10,(31-(int(5*year/4+1))%7),1,0,0,0,0,0))
+
     now=time.time()
-    if now < HHMarch :               # we are before last sunday of march
-        cet=time.localtime(now+3600) # CET:  UTC+1H
-    elif now < HHOctober :           # we are before last sunday of october
-        cet=time.localtime(now+7200) # CEST: UTC+2H
-    else:                            # we are after last sunday of october
-        cet=time.localtime(now+3600) # CET:  UTC+1H
-    return(cet)
+    if now < hh_march :               # we are before last sunday of march
+        cet=time.localtime(now+3600)  # CET:  UTC+1H
+    elif now < hh_october :           # we are before last sunday of october
+        cet=time.localtime(now+7200)  # CEST: UTC+2H
+    else:                             # we are after last sunday of october
+        cet=time.localtime(now+3600)  # CET:  UTC+1H
+    return cet
 
 
 def main():
+    """Flora2 main function"""
+
     # Set system clock from NTP server
     try:
         ntptime.settime()
@@ -214,12 +233,18 @@ def main():
     print('Source:', cfg.PROJECT_URL)
 
     if config.battery_voltage:
-        ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated") # pylint: disable=E0601
+        ubatt = adc1_cal.ADC1Cal( # pylint: disable=E0601
+            machine.Pin(cfg.UBATT_ADC_PIN),
+            cfg.UBATT_DIV,
+            cfg.VREF,
+            cfg.UBATT_SAMPLES,
+            "ADC1_Calibrated"
+        )
         ubatt.atten(machine.ADC.ATTN_6DB)
         print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
 
         # First energy saving level: switch to processing_period2
-        if (ubatt.voltage < config.battery_weak):
+        if ubatt.voltage < config.battery_weak:
             sleep_duration = config.processing_period2
         else:
             sleep_duration = config.processing_period
@@ -250,14 +275,16 @@ def main():
 
     # Pump objects
     for i in range(2):
-        pump.pumps.append(pump.Pump(flora_mqtt.client, cfg.GPIO_PUMP_POWER[i], cfg.GPIO_PUMP_STATUS[i], tank.tank))
+        pump.pumps.append(
+            pump.Pump(flora_mqtt.client, cfg.GPIO_PUMP_POWER[i], cfg.GPIO_PUMP_STATUS[i], tank.tank)
+        )
 
 
     # Get list of sensor names from config file
     sensor_list = config.plant_sensors
     sensor_list = sensor_list.split(',')
 
-    if (sensor_list == []):
+    if sensor_list == []:
         print_line('No sensors found in the [Sensors] section of "config.ini".',
                 error=True, sd_notify=True)
         sys.exit(1)
@@ -269,9 +296,9 @@ def main():
     for s in sensor_list:
         sensor.sensors[s] = sensor.Sensor(s, config.mqtt_msg_timeout, config.sensor_batt_low)
         # check if config file contains a section for this sensor
-        if (not(config.cp.has_section(s))):
-            print_line(f'The configuration file "config.ini" has a sensor named {s} in the [Sensors] section,',
-                       error=True, sd_notify=True)
+        if not config.cp.has_section(s):
+            print_line(f'The configuration file "config.ini" has a sensor named {s} ' +
+                       'in the [Sensors] section,', error=True, sd_notify=True)
             print_line('but no plant data has been provided in a section named accordingly.',
                     error=True, sd_notify=True)
             sys.exit(1)
@@ -287,7 +314,7 @@ def main():
 
         sensor.sensors[s].init_plant()
 
-        if (config.sensor_interface == 'ble'):
+        if config.sensor_interface == 'ble':
             addr = config.cp.get(s, 'address')
             addr = addr.replace(':', '')
             addr = binascii.unhexlify(addr)
@@ -299,15 +326,19 @@ def main():
     gcollect()
 
     # Local (analog) moisture sensor interface
-    if (config.sensor_interface == 'local'):
-        if (len(sensor_list) > len(cfg.MOISTURE_ADC_PINS)):
-            print_line('Configured number sensors exceeds number of analog inputs (MOISTURE_ADC_PINS) in config.py',
-                    error=True, sd_notify=True)
+    if config.sensor_interface == 'local':
+        if len(sensor_list) > len(cfg.MOISTURE_ADC_PINS):
+            print_line('Configured number sensors exceeds number of analog inputs ' +
+                       '(MOISTURE_ADC_PINS) in config.py', error=True, sd_notify=True)
             sys.exit(1)
 
         moisture_obj = {}
         for i, s in enumerate(sensor_list):
-            moisture_obj[s] = moisture.Moisture(cfg.MOISTURE_ADC_PINS[i], cfg.MOISTURE_MIN_VAL, cfg.MOISTURE_MAX_VAL)
+            moisture_obj[s] = moisture.Moisture(
+                cfg.MOISTURE_ADC_PINS[i],
+                cfg.MOISTURE_MIN_VAL,
+                cfg.MOISTURE_MAX_VAL
+            )
 
     # Init MQTT client
     #m_mqtt.MQTTClient.DEBUG = True
@@ -317,9 +348,6 @@ def main():
     # pin_mark.value(1)
 
     flora_mqtt.client.publish(config.base_topic_flora + '/status', "online", qos=1, retain=True)
-
-#    if MEMINFO:
-#        meminfo('MQTTClient')
 
     # Initialize irrigation
     irrigation_obj = irrigation.Irrigation(flora_mqtt.client)
@@ -333,7 +361,7 @@ def main():
                 flora_mqtt.client.check_msg()
                 flora_mqtt.client.ping()
                 sleep(1)
-            if (VERBOSITY > 1):
+            if VERBOSITY > 1:
                 print_line(s + ' ready!', sd_notify=True)
 
         print_line('<-- Initial reception of MQTT sensor data succeeded.', sd_notify=True)
@@ -345,13 +373,13 @@ def main():
 
     meminfo('Start Main Loop')
 
-    if (VERBOSITY > 0):
+    if VERBOSITY > 0:
         print_line("Start Main Loop.")
 
     ###############################################################################
     # Main execution loop
     ###############################################################################
-    while (True):
+    while True:
         # Mark3 Main Loop
         # pin_mark.value(0)
         flora_mqtt.client.publish(config.base_topic_flora + '/status', "online",
@@ -363,7 +391,7 @@ def main():
         #       we just cross fingers that our connection is good...
         # At this point in the code you must consider how to handle
         # connection errors.  And how often to resume the connection.
-        if config.mqtt_tls == False and flora_mqtt.client.is_conn_issue():
+        if not config.mqtt_tls and flora_mqtt.client.is_conn_issue():
             if flora_mqtt.client.is_conn_issue():
                 # If the connection is successful, the is_conn_issue
                 # method will not return a connection error.
@@ -381,14 +409,14 @@ def main():
             time.sleep_ms(500) # pylint: disable=E1101
         # END FIXME
 
-        if (sys.platform == "esp32"):
+        if sys.platform == "esp32":
             sensor_power_obj.enable(True)
             sleep(1)
 
-        if (config.sensor_interface == 'local'):
+        if config.sensor_interface == 'local':
             for s in sensor_list:
                 valid, moist_val = moisture_obj[s].moisture
-                if (valid):
+                if valid:
                     sensor.sensors[s].update_moisture_sensor(moist_val)
                     data = {}
                     data['moisture'] = moist_val
@@ -397,22 +425,24 @@ def main():
                                                qos = 1, retain=cfg.MQTT_DATA_RETAIN)
                     print_line(f"{s} - Moisture: {moist_val}%")
                 else:
-                    print_line(f'Moisture sensor "{s}" value={moist_val} - out of range. Check connection and power settings.',
-                               error=True, sd_notify=True)
+                    print_line(f'Moisture sensor "{s}" value={moist_val} - out of range. ' +
+                               'Check connection and power settings.', error=True, sd_notify=True)
 
         # Mark4 BLE start
         # pin_mark.value(1)
-        if (config.sensor_interface == 'ble'):
+        if config.sensor_interface == 'ble':
             try:
                 ble = BLE()
                 miflora_ble = MiFlora(ble)
             except OSError as exc:
-                print_line(f'Bluetooth LE exception: {uerrno.errorcode[exc.errno]}', error=True, sd_notify=True)
+                print_line(f'Bluetooth LE exception: {uerrno.errorcode[exc.errno]}',
+                           error=True, sd_notify=True)
                 print_line('Cannot access MiFlora sensor(s).')
             else:
                 for s in sensor.sensors:
                     addr = sensor.sensors[s].address
-                    print_line(f'Connecting to MiFlora sensor {binascii.hexlify(addr)}', sd_notify=True)
+                    print_line(f'Connecting to MiFlora sensor {binascii.hexlify(addr)}',
+                               sd_notify=True)
 
                     for _ in range(cfg.BLE_MAX_RETRIES):
                         miflora_ble.gap_connect(miflora.ADDR_TYPE_PUBLIC, addr)
@@ -420,11 +450,24 @@ def main():
                         if miflora_ble.wait_for(miflora.S_READ_SENSOR_DONE, cfg.BLE_TIMEOUT):
                             print_line(f"Battery Level: {miflora_ble.battery}%")
                             #print(f"Version: {miflora_ble.version}")
-                            print_line(f"Temperature: {miflora_ble.temp}°C Light: {miflora_ble.light}lx " + \
-                                       f"Moisture: {miflora_ble.moist}% Conductivity: {miflora_ble.cond}µS/cm")
-                            sensor.sensors[s].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
-                            flora_mqtt.client.publish(config.base_topic_flora + '/' + s, sensor.sensors[s].data,
-                                                    qos = 1, retain=cfg.MQTT_DATA_RETAIN)
+                            print_line(f"Temperature: {miflora_ble.temp}°C " +
+                                       f"Light: {miflora_ble.light}lx " +
+                                       f"Moisture: {miflora_ble.moist}% " +
+                                       f"Conductivity: {miflora_ble.cond}µS/cm"
+                            )
+                            sensor.sensors[s].update_sensor(
+                                miflora_ble.temp,
+                                miflora_ble.cond,
+                                miflora_ble.moist,
+                                miflora_ble.light,
+                                miflora_ble.battery
+                            )
+                            flora_mqtt.client.publish(
+                                config.base_topic_flora + '/' + s,
+                                sensor.sensors[s].data,
+                                qos = 1,
+                                retain=cfg.MQTT_DATA_RETAIN
+                            )
                             break
                         print_line("Reading MiFlora failed!")
 
@@ -444,10 +487,10 @@ def main():
         # Read temperature sensor (optional)
         if config.temperature_sensor:
             temperature_obj = temperature.Temperature(cfg.GPIO_TEMP_SENS)
-            if (temperature_obj.devices > 0):
+            if temperature_obj.devices > 0:
                 temp = temperature_obj.temperature()
                 #temperature.show_devices()
-                if (config.sensor_interface == 'local'):
+                if config.sensor_interface == 'local':
                     for s in sensor.sensors:
                         sensor.sensors[s].update_temperature_sensor(temp)
                 print_line(f"DS1820 - Temperature: {temp}°C")
@@ -460,16 +503,22 @@ def main():
         # Read weather sensor (optional)
         if config.weather_sensor:
             valid, weather_obj = weather.weather_data()
-            if (valid):
+            if valid:
                 flora_mqtt.publish_discovery_sensor("weather")
-                print_line(f'Weather sensor - Temperature: {weather_obj["temperature"]}°C, Humidity: {weather_obj["humidity"]}%, ' + \
+                print_line(f'Weather sensor - Temperature: {weather_obj["temperature"]}°C, ' +
+                           f'Humidity: {weather_obj["humidity"]}%, ' +
                            f'Pressure: {weather_obj["pressure"]}hPa')
                 weather_data = json.dumps(weather_obj)
                 flora_mqtt.client.publish(config.base_topic_flora + '/weather', weather_data,
                                          qos = 1, retain=cfg.MQTT_DATA_RETAIN)
 
         if config.battery_voltage:
-            ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
+            ubatt = adc1_cal.ADC1Cal(
+                machine.Pin(cfg.UBATT_ADC_PIN),
+                cfg.UBATT_DIV, cfg.VREF,
+                cfg.UBATT_SAMPLES,
+                "ADC1_Calibrated"
+            )
             ubatt.atten(machine.ADC.ATTN_6DB)
             print_line(f'Battery Voltage: {ubatt.voltage:4}mV')
             flora_mqtt.publish_discovery_sensor("ubatt")
@@ -488,14 +537,30 @@ def main():
         flora_mqtt.client.send_queue()
 
         # Publish status flags/values
-        flora_mqtt.client.publish(config.base_topic_flora + '/auto_irr_stat', '1' if config.auto_irrigation else '0',
-                                   qos = 1, retain=True)
-        flora_mqtt.client.publish(config.base_topic_flora + '/man_irr_duration_stat', str(config.irr_duration_man),
-                                   qos = 1, retain=True)
-        flora_mqtt.client.publish(config.base_topic_flora + '/tank', str(tank.tank.status),
-                                   qos = 1, retain=True)
-        flora_mqtt.client.publish(config.base_topic_flora + '/sleep_dis_stat', '0' if config.deep_sleep else '1',
-                                   qos = 1, retain=True)
+        flora_mqtt.client.publish(
+            config.base_topic_flora + '/auto_irr_stat',
+            '1' if config.auto_irrigation else '0',
+            qos = 1,
+            retain = True
+        )
+        flora_mqtt.client.publish(
+            config.base_topic_flora + '/man_irr_duration_stat',
+            str(config.irr_duration_man),
+            qos = 1,
+            retain = True
+        )
+        flora_mqtt.client.publish(
+            config.base_topic_flora + '/tank',
+            str(tank.tank.status),
+            qos = 1,
+            retain = True
+        )
+        flora_mqtt.client.publish(
+            config.base_topic_flora + '/sleep_dis_stat',
+            '0' if config.deep_sleep else '1',
+            qos = 1,
+            retain = True
+        )
 
         # Execute manual irrigation (if requested)
         irrigation_obj.man_irrigation()
@@ -503,7 +568,7 @@ def main():
         flora_mqtt.client.publish(config.base_topic_flora + '/man_irr_stat', '0', qos = 1)
 
         # Execute automatic irrigation
-        if (config.auto_irrigation):
+        if config.auto_irrigation:
             config.irr_scheduled = irrigation_obj.auto_irrigation()
 
         gcollect()
@@ -515,20 +580,25 @@ def main():
             flora_mqtt.client.send_queue()
             time.sleep_ms(500) # pylint: disable=E1101
 
-        if (VERBOSITY > 1):
+        if VERBOSITY > 1:
             for s in sensor.sensors:
-                print_line(f"{s:16s} Moisture: {sensor.sensors[s].moist:3d} % Temperature: {sensor.sensors[s].temp:2.1f} " +\
-                           f"°C Conductivity: {sensor.sensors[s].cond:4d} uS/cm Light: {sensor.sensors[s].light:6d} " + \
-                           f"lx Battery: {sensor.sensors[s].batt:3d} %")
+                print_line(
+                    f"{s:16s} Moisture: {sensor.sensors[s].moist:3d} % " +
+                    f"Temperature: {sensor.sensors[s].temp:2.1f} °C " +
+                    f"Conductivity: {sensor.sensors[s].cond:4d} uS/cm " +
+                    f"Light: {sensor.sensors[s].light:6d} " +
+                    f"lx Battery: {sensor.sensors[s].batt:3d} %"
+                )
 
-        if (config.daemon_enabled):
-            if (sys.platform == "esp32"):
+        if config.daemon_enabled:
+            if sys.platform == "esp32":
                 sensor_power_obj.enable(False)
 
                 # Prevent deep sleep if battery voltage input is disconnected
                 # to simplify debugging/flashing
-                if (config.deep_sleep and ubatt.voltage > 1000):
-                    print_line(f'Entering deep sleep in 5 seconds, will wake up after {config.processing_period} seconds ...')
+                if config.deep_sleep and ubatt.voltage > 1000:
+                    print_line("Entering deep sleep in 5 seconds, will wake up after " +
+                               f"{config.processing_period} seconds ...")
                     flora_mqtt.client.publish(config.base_topic_flora + '/status', "offline",
                                             qos = 1, retain=True)
                     sleep(2)
@@ -553,7 +623,7 @@ def main():
                         # Thou shall not pass!
                         pass
 
-            if (VERBOSITY > 0):
+            if VERBOSITY > 0:
                 print_line(f'Standby ({config.processing_period} seconds) ...')
 
             flora_mqtt.client.publish(config.base_topic_flora + '/status', "idle",
@@ -576,7 +646,7 @@ def main():
                 # While Eclipse Paho maintains a network handler loop,
                 # uMQTT network services have to be handles manually
                 flora_mqtt.client.check_msg()
-                if (count == config.mqtt_keepalive):
+                if count == config.mqtt_keepalive:
                     count = 0
                     flora_mqtt.client.ping()
                 else:
