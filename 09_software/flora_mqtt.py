@@ -57,7 +57,7 @@ from print_line import print_line
 # MQTT - uMQTT (MicroPython) Setup and Tweaks
 #############################################################################################
 
-class MQTTMessage:
+class MQTTMessage: # pylint: disable=too-few-public-methods
     """
     uMQTT Wrapper for compatibility with Eclipse Paho
 
