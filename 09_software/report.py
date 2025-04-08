@@ -28,6 +28,7 @@
 # 20210607 Added support for 2nd pump
 # 20240305 Removed email support, added JSON output for MQTT
 # 20240402 Code improvements
+# 20250408 Added 'pump' from sensor settings to report
 #
 # Backlog:
 # -
@@ -110,6 +111,7 @@ class Report:
             self.data[s.name]['settings']['light_min'] = s.light_min
             self.data[s.name]['settings']['light_max'] = s.light_max
             self.data[s.name]['settings']['batt_min'] = s.batt_min
+            self.data[s.name]['settings']['pump'] = s.pump
 
             if s.valid:
                 self.data[s.name]['status'] = {}
@@ -139,7 +141,7 @@ class Report:
                 scheduled = config.irr_scheduled[i]
                 self.data['irrigation'].append({
                     'last': last_irrigation,
-                    'next': next_irrigation, 
+                    'next': next_irrigation,
                     'scheduled': scheduled
                 })
 
