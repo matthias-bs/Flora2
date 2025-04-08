@@ -30,26 +30,26 @@
 #          Added MQTT discovery messages for Home Assistant
 # 20250403 Code quality improvements
 # 20250404 Changed to Singleton class
+# 20250408 Code quality improvements
 #
 # Backlog:
-# - 
+# -
 #
 ###############################################################################
+"""MQTT client for Flora2"""
 
 import sys
 import json
-import pump
+import binascii
+import machine
+#from time import sleep_ms
 
 # https://pypi.org/project/micropython-umqtt.robust2/
 from umqtt.robust2 import MQTTClient
-import machine
-import binascii
 
-#import config as cfg
-from config import config
+import pump
+from config import config, VERBOSITY, PUMP_BUSY_MAN
 import sensor
-#from time import sleep_ms
-from config import VERBOSITY, PUMP_BUSY_MAN
 from print_line import print_line
 
 
@@ -59,7 +59,7 @@ from print_line import print_line
 
 class MQTTMessage:
     """
-    uMQTT Wrapper for compatibility with Eclipse Paho 
+    uMQTT Wrapper for compatibility with Eclipse Paho
 
     Attributes:
         topic   (string): MQTT topic
@@ -76,7 +76,7 @@ class FloraMQTT:
 
     Parameters:
         settings (Settings): Settings instance
-        
+
     Returns:
         MQTT client instance
     """
@@ -94,7 +94,7 @@ class FloraMQTT:
         self._initialized = True
 
         unique_id = binascii.hexlify(machine.unique_id()).decode("ascii")
-        
+
         if config.mqtt_tls:
             with open(config.mqtt_ca_cert, "r", encoding='utf-8') as f:
                 cert = f.read()
@@ -112,20 +112,23 @@ class FloraMQTT:
                                     ssl=config.mqtt_tls,
                                     ssl_params={"cert":cert,"server_side":False},
             )
-            self.client.set_last_will(config.base_topic_flora + '/status', "dead", qos=1, retain=True)
-            
+            self.client.set_last_will(config.base_topic_flora + '/status', "dead",
+                                      qos=1, retain=True)
+
             # BEGIN FIXME
             print_line('Connecting to MQTT broker -->')
             rc = self.client.connect(clean_session=False)
         except Exception as e:
             print_line('<-- Cannot connect to  MQTT broker: ' + str(e))
             raise
-            
-        print_line(f'<-- MQTT connection established ({"existing" if rc else "clean"} session)', sd_notify=True)
-        
+
+        print_line(f'<-- MQTT connection established ({"existing" if rc else "clean"} session)',
+                   sd_notify=True)
+
         # FIXME       # pylint: disable=fixme
-        # Something is quite different/wrong with SSL sockets. To allow non-secure and secure communication,
-        # we currently do not check the connection now, because that would fail in the latter case.
+        # Something is quite different/wrong with SSL sockets. To allow non-secure and secure
+        # communication, we currently do not check the connection now, because that would fail
+        # in the latter case.
         #    else:
         #        while mqtt_client.is_conn_issue():
         #            # If the connection is successful, the is_conn_issue
@@ -133,16 +136,16 @@ class FloraMQTT:
         #            mqtt_client.reconnect()
         #            sleep_ms(500)
         #        mqtt_client.resubscribe()
-        
+
         # Set up MQTT message subscription and handlers
-        self.mqtt_setup_messages(not(rc))
+        self.mqtt_setup_messages(not rc)
         # END FIXME
 
 
     def mqtt_umqtt_cb(self, topic, msg, retained, dup):
         """
         uMQTT sub message callback
-        
+
         Uses global vars <config> and <mqtt_client>!!!
 
         Parameters:
@@ -151,20 +154,21 @@ class FloraMQTT:
         """
         # Convert topic from bytes to string
         topic = topic.decode('utf-8')
-        
-        if (VERBOSITY > 1):
-            print_line("uMQTT message handler: topic '{}' / msg '{}' / retained: {} / dup: {}.".format(topic, msg, retained, dup),
+
+        if VERBOSITY > 1:
+            print_line(f"uMQTT message handler: topic '{topic}' / msg '{msg}'" +
+                       f"/ retained: {retained} / dup: {dup}.",
                     sd_notify=True)
-        
+
         message = MQTTMessage(topic, msg)
-        
-        if (topic == config.base_topic_flora + '/man_irr_cmd'):
+
+        if topic == config.base_topic_flora + '/man_irr_cmd':
             self.mqtt_man_irr_cmd(self.client, None, message)
-        elif (topic == config.base_topic_flora + '/man_irr_duration_ctrl'):
+        elif topic == config.base_topic_flora + '/man_irr_duration_ctrl':
             self.mqtt_man_irr_duration_ctrl(self.client, None, message)
-        elif (topic == config.base_topic_flora + '/auto_irr_ctrl'):
+        elif topic == config.base_topic_flora + '/auto_irr_ctrl':
             self.mqtt_auto_irr_ctrl(self.client, None, message)
-        elif (topic == config.base_topic_flora + '/sleep_dis_ctrl'):
+        elif topic == config.base_topic_flora + '/sleep_dis_ctrl':
             self.mqtt_sleep_dis_ctrl(self.client, None, message)
         else:
             self.mqtt_on_message(self.client, None, message)
@@ -173,41 +177,79 @@ class FloraMQTT:
     def publish_discovery_sensor(self, name):
         """
         Publish MQTT discovery messages for Home Assistant
-        
+
         Parameters:
             name (string): sensor name (same as data topic)
         """
         state_topic = f"{config.base_topic_flora}/{name}"
         sensor_name = f"{config.base_topic_flora}_{name}"
-        
+
         if name == "temperature":
             sensors = [
-                {"name": f"{sensor_name}", "stat_t": f"{state_topic}", "dev_cla": "temperature", "val_tpl": "{{ value }}", "unit_of_meas": "°C"},
+                {"name": f"{sensor_name}", "stat_t": f"{state_topic}", "dev_cla": "temperature",
+                 "val_tpl": "{{ value }}", "unit_of_meas": "°C"},
             ]
         elif name == "ubatt":
             sensors = [
-                {"name": f"{sensor_name}", "stat_t": f"{state_topic}", "dev_cla": "voltage", "val_tpl": "{{ value }}", "unit_of_meas": "mV"},
+                {"name": f"{sensor_name}", "stat_t": f"{state_topic}", "dev_cla": "voltage",
+                 "val_tpl": "{{ value }}", "unit_of_meas": "mV"},
             ]
         elif name == "tank":
             sensors = [
-                {"name": f"{sensor_name}_int", "stat_t": f"{config.base_topic_flora}/tank", "dev_cla": "enum", "val_tpl": "{{ value }}", "unit_of_meas": ""},
-                {"name": f"{sensor_name}_str", "stat_t": f"{config.base_topic_flora}/system", "dev_cla": "enum", "val_tpl": "{{ value_json.tank }}", "unit_of_meas": ""}
+                {
+                    "name": f"{sensor_name}_int", "stat_t": f"{config.base_topic_flora}/tank",
+                    "dev_cla": "enum", "val_tpl": "{{ value }}", "unit_of_meas": ""
+                },
+                {
+                    "name": f"{sensor_name}_str", "stat_t": f"{config.base_topic_flora}/system",
+                    "dev_cla": "enum", "val_tpl": "{{ value_json.tank }}", "unit_of_meas": ""
+                }
             ]
         elif name == "weather":
             sensors = [
-                {"name": f"{name}_humidity", "stat_t": f"{state_topic}", "dev_cla": "humidity", "val_tpl": "{{ value_json.humidity | float }}", "unit_of_meas": "%"},        
-                {"name": f"{name}_temperature", "stat_t": f"{state_topic}", "dev_cla": "temperature", "val_tpl": "{{ value_json.temperature | float }}", "unit_of_meas": "°C"},
-                {"name": f"{name}_pressure", "stat_t": f"{state_topic}", "dev_cla": "atmospheric_pressure", "val_tpl": "{{ value_json.pressure | float }}", "unit_of_meas": "hPa"},
+                {
+                    "name": f"{name}_humidity", "stat_t": f"{state_topic}", "dev_cla": "humidity",
+                    "val_tpl": "{{ value_json.humidity | float }}", "unit_of_meas": "%"
+                },
+                {
+                    "name": f"{name}_temperature", "stat_t": f"{state_topic}",
+                    "dev_cla": "temperature", "val_tpl": "{{ value_json.temperature | float }}",
+                    "unit_of_meas": "°C"
+                },
+                {
+                    "name": f"{name}_pressure", "stat_t": f"{state_topic}",
+                    "dev_cla": "atmospheric_pressure",
+                    "val_tpl": "{{ value_json.pressure | float }}",
+                    "unit_of_meas": "hPa"},
             ]
         else:
             sensors = [
-                {"name": f"{name}_battery", "stat_t": f"{state_topic}", "dev_cla": "battery", "val_tpl": "{{ value_json.battery | int }}", "unit_of_meas": "%"},
-                {"name": f"{name}_brightness", "stat_t": f"{state_topic}", "dev_cla": "illuminance", "val_tpl": "{{ value_json.light | int }}", "unit_of_meas": "lx"},
-                {"name": f"{name}_moisture", "stat_t": f"{state_topic}", "dev_cla": "moisture", "val_tpl": "{{ value_json.moisture | int }}", "unit_of_meas": "%"},        
-                {"name": f"{name}_temperature", "stat_t": f"{state_topic}", "dev_cla": "temperature", "val_tpl": "{{ value_json.temperature | float }}", "unit_of_meas": "°C"},
-                {"name": f"{name}_conductivity", "stat_t": f"{state_topic}", "dev_cla": "conductivity", "val_tpl": "{{ value_json.conductivity | int }}", "unit_of_meas": "µS/cm"}
+                {
+                    "name": f"{name}_battery", "stat_t": f"{state_topic}", "dev_cla": "battery",
+                    "val_tpl": "{{ value_json.battery | int }}", "unit_of_meas": "%"
+                },
+                {
+                    "name": f"{name}_brightness", "stat_t": f"{state_topic}",
+                    "dev_cla": "illuminance", "val_tpl": "{{ value_json.light | int }}",
+                    "unit_of_meas": "lx"
+                },
+                {
+                    "name": f"{name}_moisture", "stat_t": f"{state_topic}",
+                    "dev_cla": "moisture", "val_tpl": "{{ value_json.moisture | int }}",
+                    "unit_of_meas": "%"
+                },
+                {
+                    "name": f"{name}_temperature", "stat_t": f"{state_topic}",
+                    "dev_cla": "temperature", "val_tpl": "{{ value_json.temperature | float }}",
+                    "unit_of_meas": "°C"
+                },
+                {
+                    "name": f"{name}_conductivity", "stat_t": f"{state_topic}",
+                    "dev_cla": "conductivity", "val_tpl": "{{ value_json.conductivity | int }}",
+                    "unit_of_meas": "µS/cm"
+                }
             ]
-        
+
         for s in sensors:
             discovery_topic = f"homeassistant/sensor/{s['name']}/config"
             discovery_payload = {
@@ -234,35 +276,39 @@ class FloraMQTT:
     def mqtt_setup_messages(self, subscribe = True):
         """
         Subscribe to MQTT topics and set up message callbacks
-        
+
         Subscription can be ommitted if connecting to persisting session.
-        
+
         Parameters:
             subsribe (bool): if true, subscribe to messages
         """
         if sys.implementation.name != "micropython":
             # Set topic specific message handlers
-            self.client.message_callback_add(config.base_topic_flora + '/man_irr_cmd', self.mqtt_man_irr_cmd)
-            self.client.message_callback_add(config.base_topic_flora + '/man_irr_duration_ctrl', self.mqtt_man_irr_duration_ctrl)
-            self.client.message_callback_add(config.base_topic_flora + '/auto_irr_ctrl', self.mqtt_auto_irr_ctrl)
+            self.client.message_callback_add(config.base_topic_flora + '/man_irr_cmd',
+                                             self.mqtt_man_irr_cmd)
+            self.client.message_callback_add(config.base_topic_flora + '/man_irr_duration_ctrl',
+                                             self.mqtt_man_irr_duration_ctrl)
+            self.client.message_callback_add(config.base_topic_flora + '/auto_irr_ctrl',
+                                             self.mqtt_auto_irr_ctrl)
 
             # Message handler for reception of all other subsribed topics
             self.client.on_message = self.mqtt_on_message
         else:
-            # umqtt only supports a single callback for all topics! 
+            # umqtt only supports a single callback for all topics!
             self.client.set_callback(self.mqtt_umqtt_cb)
 
-        if (subscribe):
+        if subscribe:
             # Subscribe to flora control MQTT topics
-            for topic in ['man_irr_cmd', 'man_irr_duration_ctrl', 'auto_irr_ctrl', 'sleep_dis_ctrl']:
-                print_line('Subscribing to MQTT topic ' + config.base_topic_flora + '/' + topic,
+            for topic in ['man_irr_cmd', 'man_irr_duration_ctrl', 'auto_irr_ctrl',
+                          'sleep_dis_ctrl']:
+                print_line(f'Subscribing to MQTT topic {config.base_topic_flora}/{topic}',
                         sd_notify=True)
                 self.client.subscribe(config.base_topic_flora + '/' + topic, qos=1)
 
-            if (config.sensor_interface == 'mqtt'):
+            if config.sensor_interface == 'mqtt':
                 # Subscribe all MQTT sensor topics, e.g. "miflora-mqtt-daemon/appletree/moisture"
                 for s in sensor.sensors:
-                    print_line('Subscribing to MQTT topic ' + config.base_topic_sensors + '/' + s,
+                    print_line(f'Subscribing to MQTT topic {config.base_topic_sensors}/{s}',
                             sd_notify=True)
                     self.client.subscribe(config.base_topic_sensors + '/' + s)
 
@@ -279,15 +325,16 @@ class FloraMQTT:
         Parameters:
             client: client instance for this callback
             userdata: private user data as set in Client() or user_data_set()
-            msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
+            msg: instance of MQTTMessage. This is a class with members
+                 topic, payload, qos, retain
         """
         val = int(msg.payload)
-        print_line('MQTT message "man_irr_cmd({})" received'.format(val), sd_notify=True)
+        print_line(f'MQTT message "man_irr_cmd({val})" received', sd_notify=True)
         if val in (1, 2):
             idx = val - 1
-            if (pump.pumps[idx].busy):
-                print_line('Pump #{} already busy ({:s}), ignoring request'
-                        .format(val, "manual" if (pump.pumps[idx].busy == PUMP_BUSY_MAN) else "auto"),
+            if pump.pumps[idx].busy:
+                mode = "manual" if (pump.pumps[idx].busy == PUMP_BUSY_MAN) else "auto"
+                print_line(f'Pump #{val} already busy ({mode}), ignoring request',
                         sd_notify=True)
                 return
 
@@ -309,15 +356,17 @@ class FloraMQTT:
         Parameters:
             client: client instance for this callback
             userdata: private user data as set in Client() or user_data_set()
-            msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
+            msg: instance of MQTTMessage. This is a class with members
+                 topic, payload, qos, retain
         """
         try:
             config.irr_duration_man = int(msg.payload)
         except ValueError:
-            print_line('MQTT message "man_irr_duration_ctrl({})" received - syntax error'.format(msg.payload),
+            print_line(f'MQTT message "man_irr_duration_ctrl({msg.payload})" received' +
+                       ' - syntax error',
                     warning=True, sd_notify=True)
         else:
-            print_line('MQTT message "man_irr_duration_ctrl({})" received'.format(config.irr_duration_man),
+            print_line(f'MQTT message "man_irr_duration_ctrl({config.irr_duration_man})" received',
                     sd_notify=True)
             client.publish(config.base_topic_flora + '/man_irr_duration_stat', msg.payload)
 
@@ -332,15 +381,16 @@ class FloraMQTT:
         (b'0'/b'1' means integer value 0/1)
         The response message contains the original payload, which
         is used by MQTT Dash to set the visual state.
-        
+
         Parameters:
             client: client instance for this callback
             userdata: private user data as set in Client() or user_data_set()
-            msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain    
+            msg: instance of MQTTMessage. This is a class with members
+                 topic, payload, qos, retain
         """
         config.auto_irrigation = int(msg.payload)
 
-        print_line('MQTT message "auto_irr_ctrl({})" received'.format(config.auto_irrigation),
+        print_line(f'MQTT message "auto_irr_ctrl({config.auto_irrigation})" received',
                 sd_notify=True)
         client.publish(config.base_topic_flora + '/auto_irr_stat', msg.payload)
 
@@ -355,16 +405,17 @@ class FloraMQTT:
         (b'0'/b'1' means integer value 0/1)
         The response message contains the original payload, which
         is used by MQTT Dash to set the visual state.
-        
+
         Parameters:
             client: client instance for this callback
             userdata: private user data as set in Client() or user_data_set()
-            msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain    
+            msg: instance of MQTTMessage. This is a class with members
+                 topic, payload, qos, retain
         """
         sleep_disable = int(msg.payload)
-        config.deep_sleep = not(sleep_disable)
+        config.deep_sleep = not sleep_disable
 
-        print_line('MQTT message "sleep_dis_ctrl({})" received'.format(sleep_disable),
+        print_line(f'MQTT message "sleep_dis_ctrl({sleep_disable})" received',
                 sd_notify=True)
         client.publish(config.base_topic_flora + '/sleep_dis_stat', str(1 if sleep_disable else 0))
 
@@ -378,20 +429,20 @@ class FloraMQTT:
         Parameters:
             client: client instance for this callback
             userdata: private user data as set in Client() or user_data_set()
-            msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain    
+            msg: instance of MQTTMessage. This is a class with members
+                 topic, payload, qos, retain
         """
         _base_topic, sens = msg.topic.split('/')
 
         # Convert JSON ecoded data to dictionary
         message = json.loads(msg.payload.decode('utf-8'))
 
-        if (VERBOSITY > 0):
-            print_line('MQTT message from {}: {}'.format(sensor, message),
-                    sd_notify=True)
+        if VERBOSITY > 0:
+            print_line('MQTT message from {sensor}: {message}', sd_notify=True)
 
         # Discard data if moisture value suddenly drops to zero
-        if ((float(message['moisture']) == 0) and
-            (sensor.sensors[sens].moist > 5)):
+        if (float(message['moisture']) == 0) and \
+            (sensor.sensors[sens].moist > 5):
             return
 
         sensor.sensors[sens].update_sensor(
