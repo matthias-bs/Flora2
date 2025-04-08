@@ -27,11 +27,13 @@
 # 20250402 Code improvements
 # 20250404 Updated MQTT interface
 #          Modified pump handling
+# 20250408 Coding style improvements
 #
 # Backlog:
-# - 
+# -
 #
 ###############################################################################
+"""Irrigation control module."""
 
 import time
 import pump
@@ -44,35 +46,36 @@ from config import config, VERBOSITY
 # Irrigation class - Manual and automatic irrigation control
 ###############################################################################
 class Irrigation:
+    """Manual and automatic irrigation control"""
     def __init__(self, mqtt_client):
         """
         The constructor for Irrigation class.
         """
         self.mqtt_client = mqtt_client
 
-    ###################################################################################################
+    ################################################################################################
     # Handle manual irrigation
-    ###################################################################################################
+    ################################################################################################
     def man_irrigation(self):
         """
         Manually run irrigation
         """
-        # Check if flag has been set (asynchronously) in 'mqtt_man_irrigation_request' 
+        # Check if flag has been set (asynchronously) in 'mqtt_man_irrigation_request'
         # message callback function
         for i, p in enumerate(pump.pumps):
-            if (p.busy == cfg.PUMP_BUSY_MAN):
-                print_line('Running pump #{} for {:d} seconds -->'.format(i+1, config.irr_duration_man),
+            if p.busy == cfg.PUMP_BUSY_MAN:
+                print_line(f'Running pump #{i+1} for {config.irr_duration_man:d} seconds -->',
                            console=True, sd_notify=True)
                 p.power_on(config.irr_duration_man)
                 p.busy = 0
                 self.mqtt_client.publish(config.base_topic_flora + '/man_irr_stat', str(0), qos = 1)
                 print_line(f'<-- Running pump #{i+1} finished, Status: {p.status_str}',
-                            console=True, sd_notify=True)
+                           console=True, sd_notify=True)
 
 
-    ###################################################################################################
+    ################################################################################################
     # Handle automatic irrigation
-    ###################################################################################################
+    ################################################################################################
     def auto_irrigation(self):
         """
         Automatically run irrigation -
@@ -88,7 +91,7 @@ class Irrigation:
         The irrigation is done immediately if the rest time <irr_rest>
         since the last (automatic) irrigation has expired, otherwise it is
         scheduled until later.
-        
+
         Returns:
             bool:   true  if irrigation is scheduled
                     false otherwise
@@ -104,8 +107,8 @@ class Irrigation:
         nighttime_end = time.mktime((yy, mm, dd, h, m, s, dow, doy))
 
         now = time.mktime(time.localtime())
-        if ((now >= nighttime_start) or (now < nighttime_end)):
-            if (VERBOSITY > 1):
+        if (now >= nighttime_start) or (now < nighttime_end):
+            if VERBOSITY > 1:
                 print_line("auto_irrigation: sleep time! Zzzz...")
             return [False, False]
 
@@ -115,21 +118,22 @@ class Irrigation:
             for s in sensor.sensors:
                 if sensor.sensors[s].pump != i+1:
                     continue
-                if sensor.sensors[s].valid == False:
+                if sensor.sensors[s].valid is False:
                     # At least one sensor with timeout -> bail out
                     break
                 if sensor.sensors[s].light_il:
                     # At least one light value over irrigation limit -> bail out
                     break
                 if sensor.sensors[s].moist_oh:
-                    # At least one moisture value over range -> bail out 
+                    # At least one moisture value over range -> bail out
                     activate[i] = False
                     break
                 if sensor.sensors[s].moist_ul:
                     # At least one moisture value under range -> ready!
                     activate[i] = True
-                # Else: All moisture values (regarding this pump) within desired range -> nothing to do!
-        
+                # Else: All moisture values (regarding this pump) within desired range
+                # -> nothing to do!
+
         schedule = [False, False]
         for i, p in enumerate(pump.pumps):
             if activate[i]:
@@ -148,5 +152,5 @@ class Irrigation:
                     p.power_on(duration)
                     p.busy = 0
                     p.timestamp = time.time()
-        
+
         return schedule
