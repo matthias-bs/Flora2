@@ -18,9 +18,10 @@
 #
 # 20210117 Extracted from flora.py
 # 20250403 Fixed pylint warnings
+# 20250408 Coding style improvements
 #
 # Backlog:
-# - 
+# -
 #
 ###############################################################################
 
@@ -37,7 +38,7 @@ else:
 #########################################################################################
 # Gpio class - A stub as replacement for RPi.GPIO on other systems than Raspberry Pi
 #########################################################################################
-if (USE_GPIO_STUB):
+if USE_GPIO_STUB:
     class Gpio:
         def __init__(self):
             self.BCM = 0
@@ -53,11 +54,11 @@ if (USE_GPIO_STUB):
             pass
 
         def input(self, _pin):
-            return (False)
+            return False
 
         def output(self, _pin, _val):
             pass
-           
+
 # Use stub for RPi.GPIO on other systems than Raspberry Pi
-if (USE_GPIO_STUB):
+if USE_GPIO_STUB:
     GPIO = Gpio()
