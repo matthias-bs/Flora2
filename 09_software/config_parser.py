@@ -13,6 +13,8 @@ Source: https://github.com/Mika64/micropython-lib/blob/master/configparser/Confi
     - modified read() to process a list of files, added silently ignoring non-existent files
 20210711 MPr:
     - modified getboolean() to allow passing of fallback as integer
+20250408 MPr:
+    - renamed module to config_parser.py, coding style improvements
 """
 
 TRUE_ENCODINGS = ["1", "yes", "true", "on", "True"]
