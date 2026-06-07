@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compile Arduino Sketch",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/.vscode/arduino-compile-runner.sh",
+        "compile"
+      ],
+      "isBackground": true,
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        {
+          "owner": "arduino",
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "^Sketch uses",
+            "endsPattern": "^(Used library|Compilation complete|Error)"
+          },
+          "fileLocation": [
+            "relative",
+            "${workspaceFolder}"
+          ],
+          "pattern": {
+            "regexp": "^(.*):(\\d+):(\\d+):\\s+(error|warning):\\s+(.*)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+          }
+        }
+      ],
+      "detail": "Compile active sketch (fqbn/sketch read from .vscode/arduino.json or autodetected)."
+    }
+  ]
+}
