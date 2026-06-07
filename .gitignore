@@ -14,7 +14,7 @@ build/
 
 # ─── Credentials / secrets ───────────────────────────────────────────────────
 # Arduino sketch credentials (secrets.h.example IS tracked)
-#14_arduino/Flora2Arduino/secrets.h
+14_arduino/Flora2Arduino/secrets.h
 
 # MicroPython credentials
 09_software/secrets.py
