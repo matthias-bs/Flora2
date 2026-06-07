@@ -27,12 +27,13 @@
 
 /// Battery voltage ADC — input-only GPIO35, ADC1 ch7.
 /// Voltage divider: 100 kΩ to GND / 200 kΩ to VBAT → reads 1/3 of battery.
-#define PIN_UBATT_ADC        35     // ADC1 ch7 (shared with moisture sensor 2)
+#define PIN_UBATT_ADC        35     // ADC1 ch7 (default PCB: shared with moisture sensor 2)
 #define UBATT_DIV_FACTOR     3.0f   // divide-by inverse (multiply raw mV by 3)
 #define UBATT_SAMPLES        10     // ADC readings to average
 
 /// Analog capacitive moisture sensors — input-only ADC1 pins.
-/// Note: GPIO 35 is also used for battery; using GPIO 36 for sensor 2 instead.
+/// Note: On default Flora2 hardware, sensor 2 shares GPIO35 with battery ADC.
+/// Using a different pin for sensor 2 or battery measurement requires a PCB patch.
 #define PIN_MOISTURE_1       34     // ADC1 ch6
 #define PIN_MOISTURE_2       35     // ADC1 ch7 (shared with battery voltage)
 #define PIN_MOISTURE_3       32     // ADC1 ch4

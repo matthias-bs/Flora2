@@ -14,6 +14,8 @@
 //   • Sensor power rail            GPIO 27
 //   • Battery voltage ADC          GPIO 35
 //   • MiFlora BLE sensors          (direct GATT read via NimBLE)
+// Note: On default Flora2 PCB, moisture sensor 2 and battery ADC are both on GPIO 35.
+// Re-routing either signal to a different GPIO requires a hardware patch on the PCB.
 //
 // Required libraries:
 //   NimBLE-Arduino          (h2zero)

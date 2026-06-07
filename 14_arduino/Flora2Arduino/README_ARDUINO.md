@@ -43,6 +43,7 @@ Place your `config.json` at `data/config.json` inside the sketch folder, then us
 
 - **Runtime** — `data/config.json` defines plant identities, sensor interface mode (BLE / LOCAL / MQTT), moisture thresholds, and irrigation durations. See `ConfigLoader` for the full schema.
 - **Compile-time** — `Flora2Cfg.h` contains hardware pin assignments and feature flags such as `WEATHER_SENSOR_ENV3` and `TEMPERATURE_SENSOR_EN`.
+- **Default PCB wiring note** — moisture sensor 2 input and battery voltage ADC are both routed to GPIO 35 on the default Flora2 hardware. Changing either signal to a different GPIO requires a PCB hardware patch.
 - **Timezone / DST** — `TIMEZONE_STR` in `Flora2Cfg.h` sets the POSIX timezone string (e.g. `"CET-1CEST,M3.5.0,M10.5.0/3"`). Edit it to match your location before compiling.
 
 ---
