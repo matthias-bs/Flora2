@@ -64,7 +64,7 @@ The base topic defaults to `flora2` and can be overridden in `config.json` or `F
 | Topic | Description |
 |---|---|
 | `flora2/status` | Device status — see note below |
-| `flora2/battery` | Battery voltage in mV |
+| `flora2/ubatt` | Battery voltage in mV |
 | `flora2/weather` | JSON: `{"temperature":…,"humidity":…,"pressure":…}` |
 | `flora2/sensor/{plant_id}` | Per-plant JSON: `{"temperature":…,"moisture":…,"light":…,"conductivity":…,"battery":…,"rssi":…}` |
 | `flora2/pump{N}/last_run` | Retained JSON: `{"epoch":…,"iso":"YYYY-MM-DDTHH:MM:SS+hhmm","trigger":"auto|manual|unknown"}`; refreshed every cycle |
