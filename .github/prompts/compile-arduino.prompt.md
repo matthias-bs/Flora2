@@ -16,7 +16,7 @@ tools:
 ## What this skill does
 1. Reads `.vscode/arduino.json` to obtain the `fqbn` (fully-qualified board name).  
 2. Deduces the sketch folder from the currently active file: walks upward until a
-  `.ino` file is found; falls back to `13_arduino/Flora2Arduino` if none is found.  
+  `.ino` file is found; falls back to `14_arduino/Flora2Arduino` if none is found.  
 3. Invokes `.vscode/arduino-compile-runner.sh compile` (which calls the repo wrapper
    and then arduino-cli) and captures the output.  
 4. Reports any errors or warnings as a numbered list referencing file + line.  
