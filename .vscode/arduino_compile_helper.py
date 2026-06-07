@@ -169,6 +169,8 @@ def main():
         cmd = ['arduino-cli', args.action]
 
     if fqbn:
+        if args.action == 'compile':
+            print(f'Using FQBN: {fqbn}', file=sys.stderr)
         cmd += ['--fqbn', fqbn]
     if args.port:
         cmd += ['--port', args.port]
