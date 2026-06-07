@@ -5,11 +5,11 @@ arduino_compile_helper.py
 Helper to determine `fqbn` and sketch path and invoke arduino-cli (or the repo wrapper).
 
 Behavior:
+Behavior:
 - Reads `.vscode/arduino.json` for `fqbn` and `sketch` when present.
 - If `--fqbn` is provided it overrides arduino.json.
 - If `--active` is provided, it searches upwards for the nearest `.ino` file and uses that sketch folder.
-- Falls back to `13_arduino/Flora2Arduino` when no sketch can be deduced.
-"""
+- Falls back to `14_arduino/Flora2Arduino` when no sketch can be deduced.
 import argparse
 import json
 import os
