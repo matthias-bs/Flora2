@@ -128,8 +128,7 @@ def main():
                 sketch_dir = cand if cand.is_dir() else cand.parent
 
     if not sketch_dir:
-        sketch_dir = workspace / '13_arduino' / 'Flora2Arduino'
-
+        sketch_dir = workspace / '14_arduino' / 'Flora2Arduino'
     sketch_path = str(sketch_dir)
 
     wrapper = find_wrapper(workspace)
