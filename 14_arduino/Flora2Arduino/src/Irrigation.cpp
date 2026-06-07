@@ -48,7 +48,7 @@ void Irrigation::autoIrrigate(const AppConfig&        cfg,
         bool any_high_light = false;
         bool any_valid      = false;
 
-        // Build human-readable details for logging: per-plant moisture vs thresholds
+        // Evaluate per-plant thresholds for this pump; details text is assembled below.
         char details[256];
         details[0] = '\0';
         size_t off = 0;
