@@ -48,7 +48,7 @@ void Irrigation::autoIrrigate(const AppConfig&        cfg,
         bool any_high_light = false;
         bool any_valid      = false;
 
-        // Evaluate per-plant thresholds for this pump; details text is assembled below.
+        // Evaluate per-plant thresholds for this pump; detailed text is populated in the second loop below.
         char details[256];
         details[0] = '\0';
         size_t off = 0;
