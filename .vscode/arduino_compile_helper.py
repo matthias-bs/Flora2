@@ -10,6 +10,8 @@ Behavior:
 - If `--fqbn` is provided it overrides arduino.json.
 - If `--active` is provided, it searches upwards for the nearest `.ino` file and uses that sketch folder.
 - Falls back to `14_arduino/Flora2Arduino` when no sketch can be deduced.
+"""
+
 import argparse
 import json
 import os
