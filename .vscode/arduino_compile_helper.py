@@ -10,12 +10,40 @@ Behavior:
 - If `--fqbn` is provided it overrides arduino.json.
 - If `--active` is provided, it searches upwards for the nearest `.ino` file and uses that sketch folder.
 - Falls back to `14_arduino/Flora2Arduino` when no sketch can be deduced.
+"""
+
 import argparse
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
+
+
+def _enforce_huge_app_partition(fqbn: str) -> str:
+    # Enforce ESP32 partition menu option for larger sketch binaries.
+    # If PartitionScheme is missing, append it. If present, override it.
+    if not fqbn or not fqbn.startswith('esp32:'):
+        return fqbn
+
+    parts = fqbn.split(':', 3)
+    if len(parts) < 3:
+        return fqbn
+
+    if len(parts) == 3:
+        return fqbn + ':PartitionScheme=huge_app'
+
+    opts = [o for o in parts[3].split(',') if o]
+    replaced = False
+    for i, opt in enumerate(opts):
+        if opt.startswith('PartitionScheme='):
+            opts[i] = 'PartitionScheme=huge_app'
+            replaced = True
+            break
+    if not replaced:
+        opts.append('PartitionScheme=huge_app')
+
+    return ':'.join(parts[:3]) + ':' + ','.join(opts)
 
 
 def read_arduino_json(workspace):
@@ -113,6 +141,7 @@ def main():
     if not fqbn:
         fqbn = 'esp32:esp32:esp32'
         print('arduino.json not found or missing fqbn; using default ESP32 Dev Module.', file=sys.stderr)
+    fqbn = _enforce_huge_app_partition(fqbn)
 
     sketch_dir = None
 
@@ -140,6 +169,8 @@ def main():
         cmd = ['arduino-cli', args.action]
 
     if fqbn:
+        if args.action == 'compile':
+            print(f'Using FQBN: {fqbn}', file=sys.stderr)
         cmd += ['--fqbn', fqbn]
     if args.port:
         cmd += ['--port', args.port]

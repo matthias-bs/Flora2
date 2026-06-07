@@ -30,6 +30,7 @@ struct GeneralConfig {
     uint32_t irr_duration_auto[NUM_PUMPS]; ///< Auto irrigation per pump (s)
     uint32_t irr_duration_man;          ///< Manual irrigation duration (s)
     uint32_t irr_rest;                  ///< Minimum rest between irrigations (s)
+    uint32_t stale_sensor_max_age_s;    ///< 0=disabled, >0 max sensor age for auto-irrigation (s)
     uint8_t  night_begin_hr;
     uint8_t  night_begin_min;
     uint8_t  night_end_hr;

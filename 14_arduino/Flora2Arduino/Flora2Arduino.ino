@@ -285,7 +285,17 @@ void loop()
         }
     }
 
-    if (wifiOk && gpMqtt->connect()) {
+    bool mqttOk = false;
+    if (wifiOk) {
+        mqttOk = gpMqtt->connect();
+        if (!mqttOk) {
+            log_w("MQTT connect failed - running irrigation offline this cycle");
+        }
+    } else {
+        log_w("WiFi connect failed - running irrigation offline this cycle");
+    }
+
+    if (mqttOk) {
 #ifdef HA_DISCOVERY_EN
         // Publish discovery once on first boot
         if (rtc_cycle_count == 0) gpMqtt->publishDiscovery();
@@ -407,38 +417,45 @@ void loop()
             }
         }
 
-        // ── 8. Auto irrigation ────────────────────────────────────────────────
-        // Apply runtime auto-duration overrides from MQTT (0 = use config.json default).
-        for (uint8_t p = 0; p < NUM_PUMPS; p++) {
-            if (rtc_auto_irr_duration[p] > 0) {
-                gCfg.general.irr_duration_auto[p] = rtc_auto_irr_duration[p];
-            }
+    }
+
+    // ── 8. Auto irrigation ────────────────────────────────────────────────
+    // Keep runtime auto-enable and duration overrides active even without network.
+    gCfg.general.auto_irrigation = rtc_auto_irr_enabled;
+    for (uint8_t p = 0; p < NUM_PUMPS; p++) {
+        if (rtc_auto_irr_duration[p] > 0) {
+            gCfg.general.irr_duration_auto[p] = rtc_auto_irr_duration[p];
         }
+    }
 
-        IrrigationDecision decisions[NUM_PUMPS];
-        gpIrrigation->autoIrrigate(gCfg,
-                                    gSensorData,
-                                    gPumps,
-                                    NUM_PUMPS,
-                                    gTank,
-                                    rtc_pump_last_run,
-                                    decisions);
+    IrrigationDecision decisions[NUM_PUMPS];
+    gpIrrigation->autoIrrigate(gCfg,
+                                gSensorData,
+                                gPumps,
+                                NUM_PUMPS,
+                                gTank,
+                                rtc_pump_last_run,
+                                decisions);
 
-        // Report results
-        bool anyScheduled = false;
+    bool anyScheduled = false;
+    for (uint8_t p = 0; p < NUM_PUMPS; p++) {
+        if (decisions[p].ran && decisions[p].result != PumpResult::TANK_EMPTY) {
+            rtc_pump_last_trigger[p] = PUMP_TRIGGER_AUTO;
+        }
+        if (decisions[p].scheduled) anyScheduled = true;
+    }
+
+    if (gpMqtt->isConnected()) {
+        // Report and publish state only when MQTT is online.
         for (uint8_t p = 0; p < NUM_PUMPS; p++) {
             if (decisions[p].ran) {
                 gpMqtt->publishManIrrStatus(p, false);  // pump finished
                 gpMqtt->loop();
-                if (decisions[p].result != PumpResult::TANK_EMPTY) {
-                    rtc_pump_last_trigger[p] = PUMP_TRIGGER_AUTO;
-                }
             }
-            if (decisions[p].scheduled) anyScheduled = true;
         }
 
-        // Publish the retained current pump state every cycle so subscribers
-        // always see "off" plus the last known run timestamp even if no pump ran.
+        // Publish retained current pump state every cycle so subscribers
+        // see "off" plus the last known run timestamp even if no pump ran.
         for (uint8_t p = 0; p < NUM_PUMPS; p++) {
             gpMqtt->publishManIrrStatus(p, false);
             gpMqtt->publishPumpLastRun(p, rtc_pump_last_run[p], rtc_pump_last_trigger[p]);
