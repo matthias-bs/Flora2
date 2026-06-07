@@ -39,6 +39,19 @@ void Irrigation::autoIrrigate(const AppConfig&        cfg,
         return;
     }
 
+    const time_t now = time(nullptr);
+    const bool timeSynced = (now >= 1609459200);
+    const uint32_t staleMaxAgeS = cfg.general.stale_sensor_max_age_s;
+    const bool staleGuardEnabled = (staleMaxAgeS > 0);
+    const bool staleGuardActive = (staleGuardEnabled && timeSynced);
+
+    if (staleGuardEnabled && !timeSynced) {
+        log_w("%s: stale_sensor_max_age_s=%lu but time not synced (epoch=%ld) — stale guard bypassed",
+              TAG,
+              (unsigned long)staleMaxAgeS,
+              (long)now);
+    }
+
     // Evaluate each pump (1-based in config, 0-based in array)
     for (uint8_t p = 0; p < numPumps; p++) {
         uint8_t pump1based = p + 1;
@@ -47,6 +60,9 @@ void Irrigation::autoIrrigate(const AppConfig&        cfg,
         bool any_above_max  = false;
         bool any_high_light = false;
         bool any_valid      = false;
+        uint8_t mapped_valid = 0;
+        uint8_t fresh_count = 0;
+        uint8_t stale_count = 0;
 
         // Evaluate per-plant thresholds for this pump; detailed text is populated in the second loop below.
         char details[256];
@@ -59,6 +75,24 @@ void Irrigation::autoIrrigate(const AppConfig&        cfg,
 
             if (pc.pump != pump1based) continue;
             if (!sd.valid)             continue;
+
+            mapped_valid++;
+
+            bool isStale = false;
+            if (staleGuardActive) {
+                if (sd.last_update <= 0 || sd.last_update > now) {
+                    isStale = true;
+                } else {
+                    isStale = ((now - sd.last_update) > (time_t)staleMaxAgeS);
+                }
+            }
+
+            if (isStale) {
+                stale_count++;
+                continue;
+            }
+
+            fresh_count++;
 
             any_valid = true;
 
@@ -80,12 +114,46 @@ void Irrigation::autoIrrigate(const AppConfig&        cfg,
                 int wrote = 0;
                 if (!sd.valid) {
                     wrote = snprintf(details + off, sizeof(details) - off, "%s:invalid; ", pc.id);
+                } else if (staleGuardActive) {
+                    long age = -1;
+                    if (sd.last_update > 0 && sd.last_update <= now) {
+                        age = (long)(now - sd.last_update);
+                    }
+                    bool isStale = (sd.last_update <= 0 || sd.last_update > now || age > (long)staleMaxAgeS);
+                    if (isStale) {
+                        wrote = snprintf(details + off, sizeof(details) - off,
+                                         "%s:stale(age=%lds); ", pc.id, age);
+                    } else {
+                        wrote = snprintf(details + off, sizeof(details) - off,
+                                         "%s:moist=%u(min=%u,max=%u); ",
+                                         pc.id, sd.moisture, pc.moist_min, pc.moist_max);
+                    }
                 } else {
                     wrote = snprintf(details + off, sizeof(details) - off, "%s:moist=%u(min=%u,max=%u); ",
                                      pc.id, sd.moisture, pc.moist_min, pc.moist_max);
                 }
                 if (wrote > 0) off += (size_t)wrote;
             }
+        }
+
+        if (staleGuardActive && mapped_valid > 0 && fresh_count == 0) {
+            log_i("%s: Pump%d — stale guard blocked irrigation (stale=%u fresh=%u max_age=%lus) (%s)",
+                  TAG,
+                  pump1based,
+                  stale_count,
+                  fresh_count,
+                  (unsigned long)staleMaxAgeS,
+                  details);
+            continue;
+        }
+
+        if (staleGuardActive && stale_count > 0) {
+            log_i("%s: Pump%d — stale guard active (stale=%u fresh=%u max_age=%lus)",
+                  TAG,
+                  pump1based,
+                  stale_count,
+                  fresh_count,
+                  (unsigned long)staleMaxAgeS);
         }
 
         if (!any_valid) {

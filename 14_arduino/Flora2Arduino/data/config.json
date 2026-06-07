@@ -12,6 +12,7 @@
     "irr_duration_auto2": 90,
     "irr_duration_man":   60,
     "irr_rest":           7200,
+    "stale_sensor_max_age_s": 0,
     "night_begin":        "22:00",
     "night_end":          "07:00",
     "sensor_batt_low":    5,

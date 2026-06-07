@@ -57,6 +57,7 @@ bool ConfigLoader::load(AppConfig& cfg)
         cfg.general.irr_duration_auto[1]= g["irr_duration_auto2"] | cfg.general.irr_duration_auto[1];
         cfg.general.irr_duration_man    = g["irr_duration_man"]   | cfg.general.irr_duration_man;
         cfg.general.irr_rest            = g["irr_rest"]           | cfg.general.irr_rest;
+        cfg.general.stale_sensor_max_age_s = g["stale_sensor_max_age_s"] | cfg.general.stale_sensor_max_age_s;
         cfg.general.sensor_batt_low     = g["sensor_batt_low"]    | cfg.general.sensor_batt_low;
         cfg.general.ble_batt_interval   = g["ble_batt_interval"]  | cfg.general.ble_batt_interval;
 
@@ -149,6 +150,7 @@ void ConfigLoader::applyDefaults(AppConfig& cfg)
     cfg.general.irr_duration_auto[1] = DEF_IRR_DURATION_AUTO2;
     cfg.general.irr_duration_man     = DEF_IRR_DURATION_MAN;
     cfg.general.irr_rest             = DEF_IRR_REST;
+    cfg.general.stale_sensor_max_age_s = 0;
     cfg.general.night_begin_hr       = DEF_NIGHT_BEGIN_HR;
     cfg.general.night_begin_min      = DEF_NIGHT_BEGIN_MIN;
     cfg.general.night_end_hr         = DEF_NIGHT_END_HR;

@@ -42,6 +42,7 @@ Place your `config.json` at `data/config.json` inside the sketch folder, then us
 ### Configuration
 
 - **Runtime** — `data/config.json` defines plant identities, sensor interface mode (BLE / LOCAL / MQTT), moisture thresholds, and irrigation durations. See `ConfigLoader` for the full schema.
+- **Optional stale-sensor safeguard** — `general.stale_sensor_max_age_s` controls sensor freshness for auto irrigation. `0` disables guarding; values `>0` enable it with max allowed sensor age in seconds.
 - **Compile-time** — `Flora2Cfg.h` contains hardware pin assignments and feature flags such as `WEATHER_SENSOR_ENV3` and `TEMPERATURE_SENSOR_EN`.
 - **Default PCB wiring note** — moisture sensor 2 input and battery voltage ADC are both routed to GPIO 35 on the default Flora2 hardware. Changing either signal to a different GPIO requires a PCB hardware patch.
 - **Timezone / DST** — `TIMEZONE_STR` in `Flora2Cfg.h` sets the POSIX timezone string (e.g. `"CET-1CEST,M3.5.0,M10.5.0/3"`). Edit it to match your location before compiling.
@@ -131,7 +132,9 @@ mosquitto_pub -h <broker> -q 1 -r -t "flora2/man_irr_cmd" -m "1"
 
 ### Automatic irrigation
 
-Auto irrigation runs during each main cycle, after sensor reads and MQTT connect. For every plant configured in automatic mode in `config.json`, the `Irrigation` engine decides whether to activate its pump.
+Auto irrigation runs during each main cycle after sensor reads, even if WiFi or MQTT are unavailable. For every plant configured in automatic mode in `config.json`, the `Irrigation` engine decides whether to activate its pump.
+
+When WiFi/MQTT are down, irrigation still executes with the latest locally available state (including `RTC_DATA_ATTR` overrides). MQTT telemetry and remote commands are best-effort and resume on reconnect.
 
 **Trigger condition** — a pump run is initiated when all of the following hold:
 
@@ -149,6 +152,7 @@ Auto irrigation runs during each main cycle, after sensor reads and MQTT connect
 | **Night window** | Irrigation is suppressed between `night_begin` and `night_end` (set in `config.json`; noise prevention). |
 | **Rest period** | The `irr_rest` cooldown must have elapsed since `last_run` before the pump can fire again. (allow for seepage) |
 | **High light intensity** | Per-plant `light_irr` threshold: irrigation is suppressed when ambient lux exceeds this value to reduce the risk of leaf burn. |
+| **Stale sensor guard (optional)** | Enabled by `stale_sensor_max_age_s > 0`: if all valid sensors mapped to a pump are older than the configured age, that pump is skipped for the cycle. |
 | **Battery critically low** | If battery voltage is below `battery_low` (mV), the device skips the main cycle entirely and enters a 1-hour deep sleep. |
 
 Manual irrigation commands bypass the auto-decision logic for the current cycle but still respect the tank-empty interlock.
