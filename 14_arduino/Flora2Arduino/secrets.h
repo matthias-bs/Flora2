@@ -1,0 +1,22 @@
+///////////////////////////////////////////////////////////////////////////////
+// secrets.h — Template for WiFi and MQTT credentials with dummy values
+//
+// Fill in your real credentials.
+// This file IS tracked in version control (no real credentials here).
+///////////////////////////////////////////////////////////////////////////////
+
+#pragma once
+
+// WiFi networks — tried in order until one connects.
+static const struct { const char* ssid; const char* password; } WIFI_NETWORKS[] = {
+    { "YourSSID1",   "YourPassword1" },
+    { "YourSSID2",   "YourPassword2" },
+};
+static const uint8_t NUM_WIFI_NETWORKS =
+    sizeof(WIFI_NETWORKS) / sizeof(WIFI_NETWORKS[0]);
+
+// MQTT broker credentials
+#define MQTT_HOST       "your.mqtt.broker.example.com"
+#define MQTT_PORT       1883
+#define MQTT_USERNAME   "your_mqtt_user"
+#define MQTT_PASSWORD   "your_mqtt_password"
