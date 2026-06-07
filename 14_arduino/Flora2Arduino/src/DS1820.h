@@ -5,8 +5,7 @@
 // Uses pstolarz/OneWireNg (OneWireNg_CurrentPlatform + DSTherm driver).
 //
 // The OneWireNg object must NOT be constructed globally (platform setup is
-// performed in its constructor).  A Placeholder<> provides aligned storage
-// for the object; actual construction happens inside begin().
+// performed in its constructor). It is allocated in begin() (i.e. from setup()).
 //
 // MIT License — Copyright (c) 2026 Matthias Prinke
 ///////////////////////////////////////////////////////////////////////////////

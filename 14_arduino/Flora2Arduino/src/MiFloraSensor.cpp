@@ -114,10 +114,9 @@ void MiFloraSensor::readBattery(const std::vector<std::string>& addresses,
         // Update data and persist to NVS
         if (battPct > 0) {
             data[i].battery = battPct;
-            // Use sensor address as NVS key (stripped of colons, first 11 chars)
-            std::string key = addr.substr(0, 5) + addr.substr(9, 2);  // e.g. "C4:7C..BD" -> "C4:7CBD"
+            // Use full sensor MAC address (without colons) as stable NVS key.
+            std::string key = addr;
             key.erase(std::remove(key.begin(), key.end(), ':'), key.end());
-            if (key.size() > 15) key.resize(15);
             prefs.putUChar(key.c_str(), battPct);
         }
 
