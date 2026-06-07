@@ -134,7 +134,7 @@ mosquitto_pub -h <broker> -q 1 -r -t "flora2/man_irr_cmd" -m "1"
 
 Auto irrigation runs during each main cycle after sensor reads, even if WiFi or MQTT are unavailable. For every plant configured in automatic mode in `config.json`, the `Irrigation` engine decides whether to activate its pump.
 
-When WiFi/MQTT are down, irrigation still executes with the latest locally available state (including `RTC_DATA_ATTR` overrides). MQTT telemetry and remote commands are best-effort and resume on reconnect.
+When WiFi/MQTT are down, irrigation still executes with the latest locally available state (BLE/LOCAL sensor interfaces, plus `RTC_DATA_ATTR` overrides). In MQTT sensor mode, auto irrigation may be skipped if no recent sensor data is available. MQTT telemetry and remote commands are best-effort and resume on reconnect.
 
 **Trigger condition** — a pump run is initiated when all of the following hold:
 
