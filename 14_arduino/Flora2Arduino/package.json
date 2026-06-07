@@ -1,0 +1,30 @@
+{
+  "name": "Flora2Arduino",
+  "version": "1.0.0",
+  "description": "Automated plant irrigation system for ESP32 (Arduino port of Flora2 MicroPython firmware)",
+  "main": "Flora2Arduino.ino",
+  "frameworks": "arduino",
+  "platforms": ["ESP32"],
+  "directories": {
+    "src": "src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matthias-bs/Flora2.git"
+  },
+  "author": "Matthias Prinke",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/matthias-bs/Flora2/issues"
+  },
+  "homepage": "https://github.com/matthias-bs/Flora2",
+  "dependencies": {
+    "NimBLE-Arduino": "h2zero/NimBLE-Arduino#semver:^2.5.0",
+    "ArduinoJson": "bblanchon/ArduinoJson#semver:^7.4.3",
+    "arduino-mqtt": "256dpi/arduino-mqtt#semver:^2.5.3"
+  },
+  "optionalDependencies": {
+    "pocketBME280": "angrest/pocketBME280#semver:^1.2.4",
+    "OneWireNg": "https://github.com/pstolarz/OneWireNg#semver:^0.14.1"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "_comment": "Flora2 Arduino runtime configuration — mirrors 09_software/config.ini",
+
+  "general": {
+    "processing_period":  900,
+    "processing_period2": 1800,
+    "battery_weak":       3500,
+    "battery_low":        3300,
+    "deep_sleep":         true,
+    "auto_irrigation":    true,
+    "irr_duration_auto1": 30,
+    "irr_duration_auto2": 90,
+    "irr_duration_man":   60,
+    "irr_rest":           7200,
+    "night_begin":        "22:00",
+    "night_end":          "07:00",
+    "sensor_batt_low":    5,
+    "ble_batt_interval":  10
+  },
+
+  "sensor": {
+    "sensor_interface":   "ble",
+    "temperature_sensor": false,
+    "weather_sensor":     true,
+    "battery_voltage":    true
+  },
+
+  "mqtt": {
+    "base_topic_flora":   "flora2",
+    "base_topic_sensors": "miflora",
+    "message_timeout":    900,
+    "keepalive":          60
+  },
+
+  "plants": [
+    {
+      "id":         "SensorA",
+      "address":    "C4:7C:8D:11:22:33",
+      "name":       "PlantA",
+      "pump":       2,
+      "adc_pin":    -1,
+      "moist_min":  25,
+      "moist_lo":   30,
+      "moist_hi":   50,
+      "moist_max":  60,
+      "light_irr":  50000,
+      "temp_min":   5.0,
+      "temp_max":   40.0,
+      "cond_min":   50,
+      "cond_max":   2000,
+      "light_min":  0,
+      "light_max":  100000
+    },
+    {
+      "id":         "SensorB",
+      "address":    "80:EA:CA:44:55:66",
+      "name":       "PlantB",
+      "pump":       1,
+      "adc_pin":    -1,
+      "moist_min":  15,
+      "moist_lo":   20,
+      "moist_hi":   55,
+      "moist_max":  60,
+      "light_irr":  50000,
+      "temp_min":   5.0,
+      "temp_max":   40.0,
+      "cond_min":   50,
+      "cond_max":   2000,
+      "light_min":  0,
+      "light_max":  100000
+    }
+  ]
+}
