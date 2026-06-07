@@ -21,15 +21,15 @@ static constexpr uint32_t MQTT_DISCONNECT_WAIT_MS  = 100;
 // ─────────────────────────────────────────────────────────────────────────────
 
 MqttManager::MqttManager(const AppConfig& cfg)
-    : _cfg(cfg),
-      pendingManIrrCmd(-1),
-      pendingManIrrDurationSet(false),
-      pendingManIrrDuration(0),
-      pendingAutoIrrSet(false),
-      pendingAutoIrrValue(false),
-      pendingSleepDisSet(false),
-            pendingSleepDisValue(false),
-            _client(MQTT_BUFFER_SIZE)
+        : pendingManIrrCmd(-1),
+          pendingManIrrDurationSet(false),
+          pendingManIrrDuration(0),
+          pendingAutoIrrSet(false),
+          pendingAutoIrrValue(false),
+          pendingSleepDisSet(false),
+          pendingSleepDisValue(false),
+          _cfg(cfg),
+          _client(MQTT_BUFFER_SIZE)
 {
     memset(mqttSensorData,          0, sizeof(mqttSensorData));
     memset(mqttSensorUpdated,       0, sizeof(mqttSensorUpdated));
