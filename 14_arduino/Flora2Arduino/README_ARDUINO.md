@@ -23,7 +23,7 @@ Flora2 Arduino is a C++ / Arduino port of the Flora2 plant irrigation controller
 
 ### Building and uploading
 
-1. Open the `14_arduino/Flora2Arduino` sketch in Arduino IDE or `arduino-cli`.
+1. Open the `14_arduino/Flora2Arduino/Flora2Arduino.ino` sketch in Arduino IDE or `arduino-cli`.
 2. Install the required libraries (see [Acknowledgements](#5-acknowledgements)).
 3. Copy `secrets.h.example` to `secrets.h` and fill in your WiFi networks and MQTT broker credentials.
 4. **Compile and upload** — preferred via Arduino IDE: *Sketch → Upload*. Alternatively, use the included VS Code tasks or the build script:
