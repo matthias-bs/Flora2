@@ -79,8 +79,12 @@
 /// Enable battery voltage measurement via ADC.
 #define BATTERY_VOLTAGE_EN
 
-/// Enable MQTT over TLS (requires WiFiClientSecure + CA cert in LittleFS as /ca.crt).
+/// Enable MQTT over TLS (requires NetworkClientSecure + CA cert in LittleFS as /root_ca.pem).
 //#define MQTT_TLS_EN
+
+/// Optional TLS fallback: allow insecure TLS if /root_ca.pem cannot be loaded.
+/// Disabled by default to keep broker certificate validation enforced.
+//#define MQTT_TLS_ALLOW_INSECURE_FALLBACK
 
 /// Enable Home Assistant MQTT auto-discovery messages on connect.
 //#define HA_DISCOVERY_EN

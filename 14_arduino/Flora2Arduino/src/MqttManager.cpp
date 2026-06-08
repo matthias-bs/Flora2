@@ -6,6 +6,7 @@
 
 #include "MqttManager.h"
 #include <ArduinoJson.h>
+#include <LittleFS.h>
 #include "../secrets.h"
 #include "../Flora2Cfg.h"
 
@@ -57,7 +58,18 @@ MqttManager::MqttManager(const AppConfig& cfg)
 bool MqttManager::connect()
 {
 #ifdef MQTT_TLS_EN
-    _net.setInsecure();  // Or use _net.setCACert(ca_cert) if CA cert is available
+    File f = LittleFS.open("/root_ca.pem", "r");
+    if (!f || !_net.loadCACert(f, f.size())) {
+        log_e("%s: Failed to load CA cert", TAG);
+#ifdef MQTT_TLS_ALLOW_INSECURE_FALLBACK
+        log_w("%s: MQTT_TLS_ALLOW_INSECURE_FALLBACK enabled; using insecure TLS", TAG);
+        _net.setInsecure();
+#else
+        if (f) f.close();
+        return false;
+#endif
+    }
+    if (f) f.close();
 #endif
 
     _client.begin(MQTT_HOST, MQTT_PORT, _net);

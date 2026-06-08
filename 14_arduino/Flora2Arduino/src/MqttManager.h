@@ -26,8 +26,9 @@
 #pragma once
 #include <Arduino.h>
 #include <MQTT.h>
+#include "../Flora2Cfg.h"
 #ifdef MQTT_TLS_EN
-  #include <WiFiClientSecure.h>
+  #include <NetworkClientSecure.h>
 #else
   #include <WiFiClient.h>
 #endif
@@ -91,14 +92,14 @@ public:
     bool            mqttSensorUpdated[MAX_PLANT_SENSORS];
 
 private:
-    const AppConfig& _cfg;
+    const AppConfig&    _cfg;
 
 #ifdef MQTT_TLS_EN
-    WiFiClientSecure _net;
+    NetworkClientSecure _net;
 #else
-    WiFiClient       _net;
+    WiFiClient          _net;
 #endif
-    MQTTClient       _client;
+    MQTTClient          _client;
 
     char _clientId[32];
 
