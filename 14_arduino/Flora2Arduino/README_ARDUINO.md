@@ -20,6 +20,10 @@ Flora2 Arduino is a C++ / Arduino port of the Flora2 plant irrigation controller
 - Arduino CLI or Arduino IDE with ESP32 board support (Arduino core 3.3.8 recommended).
 - Required libraries — see [Acknowledgements](#5-acknowledgements).
 - `data/config.json` uploaded to the board's LittleFS partition and a `secrets.h` file with WiFi and MQTT credentials.
+- Optional secure MQTT setup: set `MQTT_PORT` to `8883`, define `MQTT_TLS_EN`, and upload the broker CA certificate as `data/root_ca.pem` in LittleFS.
+
+> [!NOTE]
+> The certificate file must include `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----`.
 
 ### Building and uploading
 
@@ -43,7 +47,8 @@ Place your `config.json` at `data/config.json` inside the sketch folder, then us
 
 - **Runtime** — `data/config.json` defines plant identities, sensor interface mode (BLE / LOCAL / MQTT), moisture thresholds, and irrigation durations. See `ConfigLoader` for the full schema.
 - **Optional stale-sensor safeguard** — `general.stale_sensor_max_age_s` controls sensor freshness for auto irrigation. `0` disables guarding; values `>0` enable it with max allowed sensor age in seconds.
-- **Compile-time** — `Flora2Cfg.h` contains hardware pin assignments and feature flags such as `WEATHER_SENSOR_ENV3` and `TEMPERATURE_SENSOR_EN`.
+- **Compile-time** — `Flora2Cfg.h` contains hardware pin assignments and feature flags such as `WEATHER_SENSOR_ENV3`, `TEMPERATURE_SENSOR_EN`, and `MQTT_TLS_EN`.
+- **MQTT transport** — plain MQTT uses the broker port configured in `secrets.h` (commonly `1883`). For TLS, enable `MQTT_TLS_EN`, set `MQTT_PORT` to `8883`, and provide `data/root_ca.pem` so `MqttManager` can validate the broker certificate.
 - **Default PCB wiring note** — moisture sensor 2 input and battery voltage ADC are both routed to GPIO 35 on the default Flora2 hardware. Changing either signal to a different GPIO requires a PCB hardware patch.
 - **Timezone / DST** — `TIMEZONE_STR` in `Flora2Cfg.h` sets the POSIX timezone string (e.g. `"CET-1CEST,M3.5.0,M10.5.0/3"`). Edit it to match your location before compiling.
 
