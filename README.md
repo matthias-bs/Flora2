@@ -1,15 +1,18 @@
 # Flora2
-**ESP32/MicroPython Irrigation System**
+**ESP32 Irrigation System**
 
-**flora2** is a derivative of [**flora1**](https://github.com/matthias-bs/Flora1).
+> [!NOTE]
+> The MicroPython software implementation is now deprecated due to ongoing issues with out-of-memory conditions and other instabilities. Instead, a new Arduino sketch is provided. 
+
+**flora2** (MicroPython) was a derivative of [**flora1**](https://github.com/matthias-bs/Flora1).
 
 ![flora2](https://user-images.githubusercontent.com/83612361/236630700-53796c17-c603-4072-bc65-ac93b352fe89.jpg)
 
 
 ## Features
-* Running on Espressif ESP32 Microcontroller ([HiLetgo ESP-WROOM-32 ESP32 ESP-32S Development Board](http://www.hiletgo.com/ProductDetail/1906566.html))<br>
-  (Compatibility to Raspberry Pi was planned, but is currently broken.) 
-* Software coded in [MicroPython](https://micropython.org/), must be copiled to bytecode [(__*.mpy__)](https://docs.micropython.org/en/latest/reference/glossary.html#term-.mpy-file) for ESP32
+* Running on Espressif ESP32 Microcontroller ([HiLetgo ESP-WROOM-32 ESP32 ESP-32S Development Board](http://www.hiletgo.com/ProductDetail/1906566.html)) 
+* [Arduino software](14_arduino/Flora2Arduino/README_ARDUINO.md) (**New!**)
+* [MicroPython](https://micropython.org/) software (**Deprecated!**)
 * Plant status monitorig
     * via Xiaomi Mi Flora Plant Sensors (Bluetooth Low Energy)
     * via capacitive Soil Moisture Sensors (wired)
@@ -30,7 +33,17 @@
 
 ## References
 
-Based on
+### Arduino Software
+
+* [NimBLE-Arduino](https://github.com/h2zero/NimBLE-Arduino) &ndash; BLE central / GATT client
+* [ArduinoJson](https://github.com/bblanchon/ArduinoJson) &ndash; JSON parsing and config
+* [arduino-mqtt](https://github.com/256dpi/arduino-mqtt) &ndash; MQTT client
+* [OneWireNg](https://github.com/pstolarz/OneWireNg) &ndash; DS18x OneWire driver (optional)
+* [M5Unit-ENV](https://github.com/m5stack/M5Unit-ENV) &ndash; SHT3x + QMP6988 temperature, humidity & barometric pressure sensor driver for ENV III (optional)
+* [pocketBME280](https://github.com/angrest/pocketBME280) &ndash; BME280 temperature, humidity & barometric pressure sensor driver (optional)
+
+### MicroPython Software (deprecated)
+
 * [micropython-umqtt.robust2](https://pypi.org/project/micropython-umqtt.robust2/)
 * [MicroPython-MiFlora](https://github.com/matthias-bs/MicroPython-MiFlora)
 * [micropython-bme280](https://github.com/kevbu/micropython-bme280)
