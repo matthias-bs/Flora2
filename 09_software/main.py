@@ -115,6 +115,7 @@
 # 20250330 Added MQTT discovery messages
 # 20250402 Code improvements
 # 20250404 Changed wifi to Singleton class
+# 20260525 Major refactoring to reduce memory usage and BLE/WiFi conflicts
 #
 # Backlog:
 # - fix MQTT over TLS
@@ -130,16 +131,14 @@
 import sys
 import json
 import binascii
+import struct
 import time
 from time import sleep
 
 from wifi import wifi_manager
-import miflora
-from miflora import Mi_Flora
 import machine
 import ntptime
 import uerrno
-from bluetooth import BLE
 from machine import reset
 if sys.implementation.name == "micropython":
     import gc
@@ -185,11 +184,80 @@ def cettime():
     return(cet)
 
 
-def main():
-    # Set system clock from NTP server 
+# Magic header stored as first 2 bytes of RTC memory to detect valid data.
+_RTC_MAGIC = b'F2'
+_RTC_FMT   = '>2sII'  # magic(2) + ts_pump0(4) + ts_pump1(4) = 10 bytes
+
+
+def _rtc_load_timestamps():
+    """Restore pump last-run timestamps from RTC memory after deep sleep.
+
+    Returns a list [ts_pump0, ts_pump1] of Unix timestamps (int).
+    Returns [0, 0] when no valid data is present (first boot or power-off).
+    """
     try:
-        ntptime.settime()
-    except OSError:
+        raw = machine.RTC().memory()
+        if len(raw) >= struct.calcsize(_RTC_FMT):
+            magic, ts0, ts1 = struct.unpack_from(_RTC_FMT, raw)
+            if magic == _RTC_MAGIC:
+                print_line(f'RTC memory: restored pump timestamps {ts0}, {ts1}')
+                return [ts0, ts1]
+    except Exception:  # noqa: BLE001
+        pass
+    print_line('RTC memory: no valid timestamps — using 0')
+    return [0, 0]
+
+
+def _rtc_save_timestamps():
+    """Persist current pump last-run timestamps to RTC memory before deep sleep."""
+    ts0 = m_pump.pumps[0].timestamp if m_pump.pumps[0] else 0
+    ts1 = m_pump.pumps[1].timestamp if m_pump.pumps[1] else 0
+    try:
+        machine.RTC().memory(struct.pack(_RTC_FMT, _RTC_MAGIC, ts0, ts1))
+        print_line(f'RTC memory: saved pump timestamps {ts0}, {ts1}')
+    except Exception:  # noqa: BLE001
+        print_line('RTC memory: save failed', error=True)
+
+
+def main():
+        #pin_mark = machine.Pin(0, machine.Pin.OUT, value = 1)
+    
+    if MEMINFO:
+        meminfo('Boot begin')
+
+    if wifi_manager.connect():
+        print_line("WiFi connection ready!", error=True)
+        print_line(f'Network config: {wifi_manager.station.ifconfig()}')
+    else:
+        print_line(f"Cannot connect to WiFi! Rebooting in {cfg.WLAN_RETRY_DELAY} seconds.")
+        sleep(cfg.WLAN_RETRY_DELAY)
+        reset()
+    
+    # Mark1 WIFI on
+    #pin_mark.value(0)
+    
+    if MEMINFO:
+        meminfo('Boot finished')
+
+    gc.enable() # pylint: disable=possibly-used-before-assignment
+    #print(f"gc.mem_free(): {gc.mem_free()}; gc.mem_alloc(): {gc.mem_alloc()}")
+    #gc.mem_free(): 23344; gc.mem_alloc(): 87824
+    gc.threshold(gc.mem_free() // 2 + gc.mem_alloc()) # pylint: disable=possibly-used-before-assignment,no-member
+
+    if MEMINFO:
+        meminfo('__main__')
+    
+    # Set system clock from NTP server
+    ntp_ok = False
+    for _ntp_attempt in range(3):
+        try:
+            ntptime.settime()
+            ntp_ok = True
+            break
+        except OSError:
+            sleep(2)
+    if not ntp_ok:
+        print_line('NTP sync failed after 3 attempts - rebooting', error=True)
         wifi_manager.deinit()
         machine.reset()
 
@@ -217,6 +285,14 @@ def main():
     # Initialize settings
     cfg.settings = cfg.Settings(config_dir, delimiters=('=', ), inline_comment_prefixes=('#'))
 
+    # Import BLE/miflora here (after config is loaded) to avoid OOM before Settings class is defined
+    if cfg.settings.sensor_interface == 'ble':
+        import miflora  # noqa: F401
+        from miflora import Mi_Flora
+        from bluetooth import BLE
+
+    sleep_duration = cfg.settings.processing_period  # default; overridden below if battery_voltage enabled
+
     if cfg.settings.battery_voltage:
         ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated") # pylint: disable=E0601
         ubatt.atten(machine.ADC.ATTN_6DB)
@@ -234,6 +310,7 @@ def main():
             del cfg.settings
             wifi_manager.deinit()
             print_line('Low voltage - entering deep sleep')
+            _rtc_save_timestamps()
             machine.deepsleep(sleep_duration * 1000)
             while True:
                 # Thou shall not pass!
@@ -256,6 +333,11 @@ def main():
     for i in range(2):
         m_pump.pumps[i] = m_pump.Pump(cfg.GPIO_PUMP_POWER[i], cfg.GPIO_PUMP_STATUS[i], m_tank.tank)
 
+    # Restore irrigation timestamps that survived the previous deep sleep
+    if sys.platform == 'esp32':
+        _ts = _rtc_load_timestamps()
+        m_pump.pumps[0].timestamp = _ts[0]
+        m_pump.pumps[1].timestamp = _ts[1]
 
     # Get list of sensor names from config file
     sensor_list = cfg.settings.plant_sensors
@@ -294,8 +376,7 @@ def main():
         if (cfg.settings.sensor_interface == 'ble'):
             addr = cfg.settings.cp.get(sensor, 'address')
             addr = addr.replace(':', '')
-            addr = binascii.unhexlify(addr)
-            s.sensors[sensor].address = bytes(addr, "utf-8")
+            s.sensors[sensor].address = binascii.unhexlify(addr)
 
         # Remove section from memory allocated by ConfigParser
         cfg.settings.cp.remove_section(sensor)
@@ -357,10 +438,107 @@ def main():
     # Main execution loop
     ###############################################################################
     while (True):
+        # Drain the QoS 1 confirm queue: wait for PUBACK before disconnecting.
+        # This lets TCP close cleanly so that lwIP can fully release its IDF-heap
+        # allocations (PCBs, pbufs) before esp_wifi_stop() runs.  Without this
+        # drain, esp_wifi_stop() finds less than ~864 bytes of contiguous IDF heap
+        # free, malloc() returns NULL, and the WiFi driver dereferences the NULL
+        # pointer at offset 0xa8, causing an unrecoverable LoadProhibited Guru
+        # Meditation (PC 0x40085422, EXCVADDR 0x000000a8).
+        for _ in range(10):
+            m_mqtt.mqtt_client.send_queue()
+            m_mqtt.mqtt_client.check_msg()
+            if not m_mqtt.mqtt_client.things_to_do():
+                break
+            sleep(1)
+        m_mqtt.mqtt_client.disconnect()
+        sleep(2)
+        gcollect()
+        wifi_manager.deinit()
+
+        # Mark4 BLE start
+        # pin_mark.value(1)
+        if (cfg.settings.sensor_interface == 'ble'):
+            # Force GC before BLE init: MQTT disconnect and WiFi deinit release heap,
+            # but the memory stays fragmented until collected. NimBLE requires a
+            # contiguous block for its host task stack.
+            # WiFi buffer teardown in ESP-IDF is asynchronous: a short sleep allows
+            # the IDF heap to fully reclaim WiFi DMA/RX/TX buffers before the BLE
+            # controller tries to allocate from the same IDF heap. Without the sleep,
+            # esp_bt_controller_init() fails with "controller init failed", gets a NULL
+            # pointer back from malloc, dereferences it and causes a Guru Meditation
+            # (LoadProhibited, EXCCAUSE=0x1c) which cannot be caught by MicroPython.
+            sleep(2)
+            gcollect()
+            if MEMINFO:
+                meminfo('Before BLE init')
+            ble = None
+            try:
+                ble = BLE()
+                miflora_ble = Mi_Flora(ble)
+            except OSError as exc:
+                print_line(f'Bluetooth LE exception: {uerrno.errorcode[exc.errno]}', error=True, sd_notify=True)
+                print_line('Cannot access MiFlora sensor(s).')
+            else:
+                for sensor in s.sensors:
+                    addr = s.sensors[sensor].address
+                    print_line(f'Connecting to MiFlora sensor {binascii.hexlify(addr)}', sd_notify=True)
+
+                    for _ in range(cfg.BLE_MAX_RETRIES):
+                        miflora_ble.gap_connect(miflora.ADDR_TYPE_PUBLIC, addr)
+
+                        if miflora_ble.wait_for(miflora.S_READ_SENSOR_DONE, cfg.BLE_TIMEOUT):
+                            print_line(f"Battery Level: {miflora_ble.battery}%")
+                            #print(f"Version: {miflora_ble.version}")
+                            print_line(f"Temperature: {miflora_ble.temp}°C Light: {miflora_ble.light}lx " + \
+                                       f"Moisture: {miflora_ble.moist}% Conductivity: {miflora_ble.cond}µS/cm")
+                            s.sensors[sensor].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
+                            # Note: publish deferred until after WiFi/MQTT are re-established below
+                            break
+                        else:
+                            print_line("Reading MiFlora failed!")
+
+                    miflora_ble.disconnect()
+                    if miflora_ble.wait_for_connection(False, cfg.BLE_TIMEOUT):
+                        print_line("MiFlora disconnected.")
+                    else:
+                        print_line("MiFlora disconnect failed!")
+                        miflora_ble._reset() # pylint: disable=W0212
+                del miflora_ble
+            if ble is not None:
+                del ble
+            gcollect()
+
+        # Mark5 BLE end
+        #pin_mark.value(0)
+
+        # Compact heap before WiFi reconnect: disconnect/deinit free heap but leave
+        # it fragmented; WiFi init needs contiguous buffers.
+        gcollect()
+        if MEMINFO:
+            meminfo('Before WiFi reconnect')
+
+        if wifi_manager.connect():
+            print_line("WiFi connection ready!", error=True)
+            print_line(f'Network config: {wifi_manager.station.ifconfig()}')
+        else:
+            print_line(f"Cannot connect to WiFi! Rebooting in {cfg.WLAN_RETRY_DELAY} seconds.")
+            sleep(cfg.WLAN_RETRY_DELAY)
+            reset()
+        m_mqtt.mqtt_umqtt_init()
+
         # Mark3 Main Loop
         # pin_mark.value(0)
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "online",
                                    qos=1, retain=True)
+
+        # Publish BLE sensor data now that WiFi/MQTT are re-established
+        if cfg.settings.sensor_interface == 'ble':
+            for sensor in s.sensors:
+                if s.sensors[sensor].valid:
+                    m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/' + sensor, s.sensors[sensor].data,
+                                               qos=1, retain=cfg.MQTT_DATA_RETAIN)
+
         gcollect()
 
         # BEGIN FIXME
@@ -368,7 +546,7 @@ def main():
         #       we just cross fingers that our connection is good...
         # At this point in the code you must consider how to handle
         # connection errors.  And how often to resume the connection.
-        if cfg.settings.mqtt_tls == False and m_mqtt.mqtt_client.is_conn_issue():
+        if not cfg.settings.mqtt_tls:
             if m_mqtt.mqtt_client.is_conn_issue():
                 # If the connection is successful, the is_conn_issue
                 # method will not return a connection error.
@@ -405,47 +583,7 @@ def main():
                     print_line(f'Moisture sensor "{sensor}" value={moist_val} - out of range. Check connection and power settings.',
                                error=True, sd_notify=True)
 
-        # Mark4 BLE start
-        # pin_mark.value(1)
-        if (cfg.settings.sensor_interface == 'ble'):
-            try:
-                ble = BLE()
-                miflora_ble = Mi_Flora(ble)
-            except OSError as exc:
-                print_line(f'Bluetooth LE exception: {uerrno.errorcode[exc.errno]}', error=True, sd_notify=True)
-                print_line('Cannot access MiFlora sensor(s).')
-            else:
-                for sensor in s.sensors:
-                    addr = s.sensors[sensor].address
-                    print_line(f'Connecting to MiFlora sensor {binascii.hexlify(addr)}', sd_notify=True)
 
-                    for _ in range(cfg.BLE_MAX_RETRIES):
-                        miflora_ble.gap_connect(miflora.ADDR_TYPE_PUBLIC, addr)
-
-                        if miflora_ble.wait_for(miflora.S_READ_SENSOR_DONE, cfg.BLE_TIMEOUT):
-                            print_line(f"Battery Level: {miflora_ble.battery}%")
-                            #print(f"Version: {miflora_ble.version}")
-                            print_line(f"Temperature: {miflora_ble.temp}°C Light: {miflora_ble.light}lx " + \
-                                       f"Moisture: {miflora_ble.moist}% Conductivity: {miflora_ble.cond}µS/cm")
-                            s.sensors[sensor].update_sensor(miflora_ble.temp, miflora_ble.cond, miflora_ble.moist, miflora_ble.light, miflora_ble.battery)
-                            m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/' + sensor, s.sensors[sensor].data,
-                                                    qos = 1, retain=cfg.MQTT_DATA_RETAIN)
-                            break
-                        else:
-                            print_line("Reading MiFlora failed!")
-
-                    miflora_ble.disconnect()
-                    if miflora_ble.wait_for_connection(False, cfg.BLE_TIMEOUT):
-                        print_line("MiFlora disconnected.")
-                    else:
-                        print_line("MiFlora disconnect failed!")
-                        miflora_ble._reset() # pylint: disable=W0212
-                del miflora_ble
-            del ble
-            gcollect()
-
-        # Mark5 BLE end
-        #pin_mark.value(0)
 
         # Read temperature sensor (optional)
         if cfg.settings.temperature_sensor:
@@ -473,6 +611,8 @@ def main():
                 weather_data = json.dumps(weather)
                 m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/weather', weather_data,
                                          qos = 1, retain=cfg.MQTT_DATA_RETAIN)
+                del weather_data
+            del weather
 
         if cfg.settings.battery_voltage:
             ubatt = adc1_cal.ADC1Cal(machine.Pin(cfg.UBATT_ADC_PIN), cfg.UBATT_DIV, cfg.VREF, cfg.UBATT_SAMPLES, "ADC1_Calibrated")
@@ -489,6 +629,7 @@ def main():
         report = m_report.Report()
         system = report.gen_report()
         del report
+        gcollect()
 
         m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/system', system, qos = 1, retain=True)
         m_mqtt.mqtt_client.send_queue()
@@ -533,33 +674,41 @@ def main():
 
                 # Prevent deep sleep if battery voltage input is disconnected
                 # to simplify debugging/flashing 
-                if (cfg.settings.deep_sleep and ubatt.voltage > 1000):
+                if (cfg.settings.deep_sleep and (not cfg.settings.battery_voltage or ubatt.voltage > 1000)):
                     print_line(f'Entering deep sleep in 5 seconds, will wake up after {cfg.settings.processing_period} seconds ...')
                     m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "offline",
                                             qos = 1, retain=True)
-                    sleep(2)
-                    m_mqtt.mqtt_client.check_msg()
-                    m_mqtt.mqtt_client.send_queue()
+                    # Drain the QoS 1 confirm queue: wait for PUBACK before disconnecting.
+                    # Without this the TCP close races the outgoing PUBLISH and the broker
+                    # triggers the LWT ("dead") instead of delivering "offline".
+                    for _ in range(10):
+                        m_mqtt.mqtt_client.send_queue()
+                        m_mqtt.mqtt_client.check_msg()
+                        if not m_mqtt.mqtt_client.things_to_do():
+                            break
+                        sleep(1)
                     m_mqtt.mqtt_client.disconnect()
                     sleep(3)
                     del sensor_power
                     del m_tank.tank
                     del m_pump.pumps
                     try:
-                        for _, obj in moisture.items():
-                            del obj
+                        del moisture
                     except NameError:
                         pass
-                    for obj in s.sensors:
-                        del obj
+                    del s.sensors
                     del m_mqtt.mqtt_client
                     del cfg.settings
                     wifi_manager.deinit()
+                    _rtc_save_timestamps()
                     #pin_mark.value(0)
                     machine.deepsleep(sleep_duration * 1000)
                     while True:
                         # Thou shall not pass!
                         pass
+
+            if cfg.settings.battery_voltage:
+                del ubatt
 
             if (VERBOSITY > 0):
                 print_line(f'Standby ({cfg.settings.processing_period} seconds) ...')
@@ -577,8 +726,11 @@ def main():
                     break
 
                 # While Eclipse Paho maintains a network handler loop,
-                # uMQTT network services have to be handles manually
+                # uMQTT network services have to be handled manually.
+                # send_queue() is also needed here to flush the "idle" status
+                # publish if the initial send_queue() above failed.
                 m_mqtt.mqtt_client.check_msg()
+                m_mqtt.mqtt_client.send_queue()
                 if (count == cfg.settings.mqtt_keepalive):
                     count = 0
                     m_mqtt.mqtt_client.ping()
@@ -588,7 +740,13 @@ def main():
         else:
             m_mqtt.mqtt_client.publish(cfg.settings.base_topic_flora + '/status', "offline",
                                        qos = 1, retain=True)
-            m_mqtt.mqtt_client.send_queue()
+            # Drain the QoS 1 confirm queue: wait for PUBACK before disconnecting.
+            for _ in range(10):
+                m_mqtt.mqtt_client.send_queue()
+                m_mqtt.mqtt_client.check_msg()
+                if not m_mqtt.mqtt_client.things_to_do():
+                    break
+                sleep(1)
             print_line('Finished in non-daemon-mode', sd_notify=True)
             m_mqtt.mqtt_client.disconnect()
             break
@@ -599,31 +757,4 @@ def main():
 ###############################################################################
 
 if __name__ == '__main__':
-    #pin_mark = machine.Pin(0, machine.Pin.OUT, value = 1)
-    
-    if MEMINFO:
-        meminfo('Boot begin')
-
-    if wifi_manager.connect():
-        print_line("WiFi connection ready!", error=True)
-        print_line(f'Network config: {wifi_manager.station.ifconfig()}')
-    else:
-        print_line(f"Cannot connect to WiFi! Rebooting in {cfg.WLAN_RETRY_DELAY} seconds.")
-        sleep(cfg.WLAN_RETRY_DELAY)
-        reset()
-    
-    # Mark1 WIFI on
-    #pin_mark.value(0)
-    
-    if MEMINFO:
-        meminfo('Boot finished')
-
-    gc.enable() # pylint: disable=possibly-used-before-assignment
-    #print(f"gc.mem_free(): {gc.mem_free()}; gc.mem_alloc(): {gc.mem_alloc()}")
-    #gc.mem_free(): 23344; gc.mem_alloc(): 87824
-    gc.threshold(gc.mem_free() // 2 + gc.mem_alloc()) # pylint: disable=possibly-used-before-assignment,no-member
-
-    if MEMINFO:
-        meminfo('__main__')
-    
     main()
