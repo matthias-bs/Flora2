@@ -60,6 +60,7 @@
 #          initial release on GitHub
 # 20210506 Minor changes to improve integration as module
 # 20250403 Fixed/masked pylint errors/warnings
+# 20260609 Add data length check in read_sensor_done to handle short data
 #
 # Backlog:
 # 
@@ -689,6 +690,9 @@ class Mi_Flora:
 #        self._debug("read_sensor_done()", 1)
         data = bytes(data)
 #        self._debug("data(): {}".format(data), 3)
+        if len(data) < 10:
+            self._debug('read_sensor_done: short data ({} bytes), ignoring'.format(len(data)), 1)
+            return
         # Note 1: ustruct.unpack() does not support padding
         #         (cf. https://docs.micropython.org/en/latest/library/ustruct.html)
         # Note 2: (u)struct() always returns a tuple, even if the result is a single element

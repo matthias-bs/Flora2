@@ -21,6 +21,7 @@
 #          (http://docs.m5stack.com/en/hat/hat_envIII)
 # 20250330 Fixed SHT30 exception handling
 # 20250402 Code improvements
+# 20260609 Improved error handling for I2C initialization and sensor access
 #
 # Backlog:
 # - 
@@ -39,13 +40,14 @@ import qmp6988 # https://github.com/cdrajb/M5_ENVIII
 def weather_data():
     data = {}
     valid = False
-    
+    bus = None
+
     try:
         bus = SoftI2C(scl=Pin(cfg.GPIO_I2C_SCL), sda=Pin(cfg.GPIO_I2C_SDA))
     except OSError as exc:
-        valid = False
         print_line(f'I2C Bus Error! ({exc.args[1]})!', error=True, console=True, sd_notify=True)
-    
+        return (False, {})
+
     try:
         bme = bme280.BME280(i2c=bus, address=cfg.BME280_ADDR, mode=bme280.BME280_OSAMPLE_1)
     except OSError:

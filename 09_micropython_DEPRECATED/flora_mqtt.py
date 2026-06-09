@@ -29,6 +29,7 @@
 # 20250306 Removed report command/control
 #          Added MQTT discovery messages for Home Assistant
 # 20250403 Code quality improvements
+# 20260609 Add error handling for MQTT initialization and message processing
 #
 # Backlog:
 # - 
@@ -89,8 +90,12 @@ def mqtt_umqtt_init():
     unique_id = binascii.hexlify(machine.unique_id()).decode("ascii")
     
     if cfg.settings.mqtt_tls:
-        with open(cfg.settings.mqtt_ca_cert, "r", encoding='utf-8') as f:
-            cert = f.read()
+        try:
+            with open(cfg.settings.mqtt_ca_cert, "r", encoding='utf-8') as f:
+                cert = f.read()
+        except OSError as e:
+            print_line(f'Cannot read MQTT CA cert file: {e}')
+            raise
     else:
         cert = None
 
@@ -103,7 +108,7 @@ def mqtt_umqtt_init():
                         keepalive=cfg.settings.mqtt_keepalive,
                         socket_timeout=40 if cfg.settings.mqtt_tls else 6,
                         ssl=cfg.settings.mqtt_tls,
-                        ssl_params={"cert":cert,"server_side":False}
+                        ssl_params={"cert":cert,"server_side":False} if cfg.settings.mqtt_tls else {}
         )
         mqtt_client.set_last_will(cfg.settings.base_topic_flora + '/status', "dead", qos=1, retain=True)
         
@@ -274,7 +279,12 @@ def mqtt_man_irr_cmd(client, _userdata, msg):
         userdata: private user data as set in Client() or user_data_set()
         msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain
     """
-    val = int(msg.payload)
+    try:
+        val = int(msg.payload)
+    except ValueError:
+        print_line('MQTT message "man_irr_cmd({})" received - syntax error'.format(msg.payload),
+                   warning=True, sd_notify=True)
+        return
     print_line('MQTT message "man_irr_cmd({})" received'.format(val), sd_notify=True)
     if ((val == 1) or (val == 2)):
         idx = val - 1
@@ -331,7 +341,12 @@ def mqtt_auto_irr_ctrl(client, _userdata, msg):
         userdata: private user data as set in Client() or user_data_set()
         msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain    
     """
-    cfg.settings.auto_irrigation = int(msg.payload)
+    try:
+        cfg.settings.auto_irrigation = int(msg.payload)
+    except ValueError:
+        print_line('MQTT message "auto_irr_ctrl({})" received - syntax error'.format(msg.payload),
+                   warning=True, sd_notify=True)
+        return
 
     print_line('MQTT message "auto_irr_ctrl({})" received'.format(cfg.settings.auto_irrigation),
                sd_notify=True)
@@ -354,7 +369,12 @@ def mqtt_sleep_dis_ctrl(client, _userdata, msg):
         userdata: private user data as set in Client() or user_data_set()
         msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain    
     """
-    sleep_disable = int(msg.payload)
+    try:
+        sleep_disable = int(msg.payload)
+    except ValueError:
+        print_line('MQTT message "sleep_dis_ctrl({})" received - syntax error'.format(msg.payload),
+                   warning=True, sd_notify=True)
+        return
     cfg.settings.deep_sleep = not(sleep_disable)
 
     print_line('MQTT message "sleep_dis_ctrl({})" received'.format(sleep_disable),
@@ -373,24 +393,38 @@ def mqtt_on_message(_client, _userdata, msg):
         userdata: private user data as set in Client() or user_data_set()
         msg: an instance of MQTTMessage. This is a class with members topic, payload, qos, retain    
     """
-    _base_topic, sensor = msg.topic.split('/')
+    try:
+        _base_topic, sensor = msg.topic.split('/')
+    except ValueError:
+        print_line('MQTT message: unexpected topic format "{}"'.format(msg.topic),
+                   warning=True, sd_notify=True)
+        return
 
-    # Convert JSON ecoded data to dictionary
-    message = json.loads(msg.payload.decode('utf-8'))
+    # Convert JSON encoded data to dictionary
+    try:
+        message = json.loads(msg.payload.decode('utf-8'))
+    except (ValueError, UnicodeDecodeError) as exc:
+        print_line('MQTT message from {}: invalid payload ({})'.format(sensor, exc),
+                   warning=True, sd_notify=True)
+        return
 
     if (VERBOSITY > 0):
         print_line('MQTT message from {}: {}'.format(sensor, message),
                    sd_notify=True)
 
-    # Discard data if moisture value suddenly drops to zero
-    if ((float(message['moisture']) == 0) and
-        (s.sensors[sensor].moist > 5)):
-        return
+    try:
+        # Discard data if moisture value suddenly drops to zero
+        if ((float(message['moisture']) == 0) and
+            (s.sensors[sensor].moist > 5)):
+            return
 
-    s.sensors[sensor].update_sensor(
-        float(message['temperature']),
-        int(message['conductivity']),
-        int(message['moisture']),
-        int(message['light']),
-        int(message['battery'])
-    )
+        s.sensors[sensor].update_sensor(
+            float(message['temperature']),
+            int(message['conductivity']),
+            int(message['moisture']),
+            int(message['light']),
+            int(message['battery'])
+        )
+    except (KeyError, ValueError) as exc:
+        print_line('MQTT message from {}: missing or invalid field ({})'.format(sensor, exc),
+                   warning=True, sd_notify=True)

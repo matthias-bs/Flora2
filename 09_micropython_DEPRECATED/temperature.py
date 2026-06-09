@@ -21,6 +21,7 @@
 #          Changed code to assume MicroPython/ESP32
 #          Corrected comments/description
 # 20210521 Modified index handling
+# 20260609 Added error handling
 #
 # Backlog:
 # - For multiple sensors: is the list returned by scan() ordered?
@@ -58,11 +59,11 @@ class Temperature:
         self._pin    = pin_no
         try:
             self._ds_sensor = ds18x20.DS18X20(onewire.OneWire(Pin(self._pin)))
-        except AssertionError:
-            print('Error: Temperature(): sensor access failed')
-            
-        self._roms = self._ds_sensor.scan()
-        self.devices = len(self._roms)
+            self._roms = self._ds_sensor.scan()
+            self.devices = len(self._roms)
+        except (AssertionError, OSError) as exc:
+            print('Error: Temperature(): sensor access failed ({})'.format(exc))
+            self._roms = []
 
     def show_devices(self):
         for i, dev in enumerate(self._roms):

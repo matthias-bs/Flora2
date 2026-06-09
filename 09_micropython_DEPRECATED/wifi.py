@@ -16,6 +16,7 @@
 # 20210330 Extracted from boot.py
 # 20250402 Code improvements
 # 20250403 Added singleton pattern
+# 20260609 Activate WiFi station if not already active before scanning
 #
 # Backlog:
 # - 
@@ -50,6 +51,8 @@ class WiFiManager:
 
     def connect(self, timeout=10):
         """Connect to a WiFi network."""
+        if not self.station.active():
+            self.station.active(True)
         print("Scanning for available networks...")
         available_networks = {n[0].decode(): n for n in self.station.scan()}
 

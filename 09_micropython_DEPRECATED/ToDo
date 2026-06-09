@@ -1,0 +1,3 @@
+- Add wrapper for GPIO around RPi Python/ESP32 MicroPython modules
+- modify night time detection and night mode
+- check garbage collection
