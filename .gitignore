@@ -17,6 +17,7 @@ build/
 14_arduino/Flora2Arduino/secrets.h
 14_arduino/Flora2Arduino/_secrets.h
 14_arduino/Flora2Arduino/data/_config.json
+14_arduino/Flora2Arduino/data/root_ca.pem
 
 # MicroPython credentials
 09_software/secrets.py
