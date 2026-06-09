@@ -28,6 +28,7 @@
 # 20210605 Changed global integer valiable <pump> to list <pumps>
 # 20210609 Added property <state>
 # 20250402 Code improvements
+# 20260609 Fixed circular dependency
 #
 # Backlog:
 # - Check/modify driver status for BTS117
@@ -37,7 +38,6 @@
 import sys
 from time import sleep
 
-import flora_mqtt as mqtt
 import config as cfg
 
 if sys.implementation.name == "micropython":
@@ -164,6 +164,7 @@ class Pump:
             if sys.implementation.name == "micropython":
                 if count == cfg.settings.mqtt_keepalive:
                     count = 0
+                    import flora_mqtt as mqtt  # local import to break circular dependency
                     mqtt.mqtt_client.ping()
                 else:
                     count += 1
