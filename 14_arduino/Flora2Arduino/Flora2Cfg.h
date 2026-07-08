@@ -66,6 +66,9 @@
 // Use the device addresses reported by the hardware.
 #define SHT3X_I2C_ADDR   0x44
 #define QMP6988_I2C_ADDR 0x70
+// Per-cycle weather read retries for transient I2C glitches.
+#define WEATHER_READ_RETRIES         3
+#define WEATHER_READ_RETRY_DELAY_MS  50
 
 // ─── Feature Flags ───────────────────────────────────────────────────────────
 

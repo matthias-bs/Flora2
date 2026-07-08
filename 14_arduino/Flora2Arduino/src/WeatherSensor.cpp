@@ -81,20 +81,43 @@ bool WeatherSensor::read()
 
 #if defined(WEATHER_SENSOR_ENV3)
 
-    bool ok = _sht.update();
-    ok &= _qmp.update();
-    if (!ok) {
-        log_e("%s: Sensor read failed", TAG);
-        _data.valid = false;
-        return false;
+    for (uint8_t attempt = 1; attempt <= WEATHER_READ_RETRIES; ++attempt) {
+        bool okSht = _sht.update();
+        bool okQmp = _qmp.update();
+
+        if (okSht && okQmp) {
+            _data.temperature = _sht.cTemp;
+            _data.humidity    = _sht.humidity;
+            _data.pressure    = _qmp.pressure / 100.0f;  // Pa → hPa
+            _data.valid       = true;
+
+            if (attempt > 1) {
+                log_w("%s: Sensor read recovered on attempt %u/%u",
+                      TAG,
+                      (unsigned)attempt,
+                      (unsigned)WEATHER_READ_RETRIES);
+            }
+
+            log_i("%s: T=%.1f°C H=%.1f%% P=%.1f hPa",
+                  TAG, _data.temperature, _data.humidity, _data.pressure);
+            return true;
+        }
+
+        log_w("%s: Sensor read failed (attempt %u/%u, sht=%d qmp=%d)",
+              TAG,
+              (unsigned)attempt,
+              (unsigned)WEATHER_READ_RETRIES,
+              okSht ? 1 : 0,
+              okQmp ? 1 : 0);
+
+        if (attempt < WEATHER_READ_RETRIES) {
+            delay(WEATHER_READ_RETRY_DELAY_MS);
+        }
     }
-    _data.temperature = _sht.cTemp;
-    _data.humidity    = _sht.humidity;
-    _data.pressure    = _qmp.pressure / 100.0f;  // Pa → hPa
-    _data.valid = true;
-    log_i("%s: T=%.1f°C H=%.1f%% P=%.1f hPa",
-          TAG, _data.temperature, _data.humidity, _data.pressure);
-    return true;
+
+    _data.valid = false;
+    log_e("%s: Sensor read failed after %u attempts", TAG, (unsigned)WEATHER_READ_RETRIES);
+    return false;
 
 #elif defined(WEATHER_SENSOR_BME280)
 
