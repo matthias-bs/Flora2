@@ -60,7 +60,7 @@ jobs:
         run:
           |
           declare -a required_libs=(
-            "MQTT@2.5.3"
+            "MQTT@2.6.0"
             "OneWireNg@0.14.1"
             "NimBLE-Arduino@2.5.0"
             "ArduinoJson@7.4.3")
