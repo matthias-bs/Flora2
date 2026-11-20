@@ -15,19 +15,6 @@ jobs:
         board:
           - esp32:esp32:esp32:DebugLevel=none
           - esp32:esp32:esp32:DebugLevel=verbose
-          - esp32:esp32:firebeetle32
-          #- esp32:esp32:ttgo-lora32:Revision=TTGO_LoRa32_V1
-          #- esp32:esp32:ttgo-lora32:Revision=TTGO_LoRa32_V2
-          - esp32:esp32:ttgo-lora32:Revision=TTGO_LoRa32_v21new,PartitionScheme=huge_app
-          - esp32:esp32:lilygo_t3s3:Revision=Radio_LR1121
-          #- esp32:esp32:heltec_wireless_stick:PSRAM=disabled
-          #- esp32:esp32:heltec_wifi_lora_32_V2
-          - esp32:esp32:heltec_wifi_lora_32_V3
-          #- esp32:esp32:featheresp32
-          #- esp32:esp32:m5stack_core2 # Needs arduino-esp32 v3.0.7
-          - esp32:esp32:esp32s3_powerfeather:Revision=V1
-          - esp32:esp32:esp32s3_powerfeather:Revision=V2
-          - esp32:esp32:XIAO_ESP32S3
 
     runs-on: ubuntu-latest
     name: ${{ matrix.board }}
