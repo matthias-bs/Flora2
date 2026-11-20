@@ -78,6 +78,7 @@ jobs:
             "BresserWeatherSensorReceiver@0.44.0"
             "RadioLib@8.0.0"
             "LoRa Serialization@3.3.1"
+            "MQTT@2.6.0"
             "OneWireNg@0.14.1"
             "DallasTemperature@4.0.6"
             "NimBLE-Arduino@2.5.2"
