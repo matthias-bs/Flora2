@@ -13,14 +13,29 @@ jobs:
     strategy:
       matrix:
         board:
-          - esp32:esp32:esp32:PartitionScheme=huge_app,DebugLevel=none
-          - esp32:esp32:esp32:PartitionScheme=huge_app,DebugLevel=verbose
+          - esp32:esp32:esp32:DebugLevel=none
+          - esp32:esp32:esp32:DebugLevel=verbose
+          - esp32:esp32:firebeetle32
+          #- esp32:esp32:ttgo-lora32:Revision=TTGO_LoRa32_V1
+          #- esp32:esp32:ttgo-lora32:Revision=TTGO_LoRa32_V2
+          - esp32:esp32:ttgo-lora32:Revision=TTGO_LoRa32_v21new
+          - esp32:esp32:lilygo_t3s3:Revision=Radio_LR1121
+          #- esp32:esp32:heltec_wireless_stick:PSRAM=disabled
+          #- esp32:esp32:heltec_wifi_lora_32_V2
+          - esp32:esp32:heltec_wifi_lora_32_V3
+          #- esp32:esp32:featheresp32
+          #- esp32:esp32:m5stack_core2 # Needs arduino-esp32 v3.0.7
+          - esp32:esp32:esp32s3_powerfeather:Revision=V1
+          - esp32:esp32:esp32s3_powerfeather:Revision=V2
+          - esp32:esp32:adafruit_feather_esp32s2
+          - esp32:esp32:XIAO_ESP32S3
+          - rp2040:rp2040:adafruit_feather:dbgport=Serial
 
     runs-on: ubuntu-latest
     name: ${{ matrix.board }}
     env:
       GH_TOKEN: ${{ github.token }}
-      run-build: ${{ contains(matrix.board, 'esp32:esp32') || contains(github.event.head_commit.message, 'CI_BUILD_ALL') || contains(github.event.head_commit.message, 'Bump version to') || contains(github.event.head_commit.message, format('{0}', matrix.board)) }}
+      run-build: ${{ contains(matrix.board, 'esp32:esp32') || contains(matrix.board, 'rp2040:rp2040') || contains(github.event.head_commit.message, 'CI_BUILD_ALL') || contains(github.event.head_commit.message, 'Bump version to') || contains(github.event.head_commit.message, format('{0}', matrix.board)) }}
 
     steps:
       - name: Install arduino-cli
@@ -53,32 +68,51 @@ jobs:
             # ESP32
             python -m pip install pyserial
             echo "index-url=--additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json" >> $GITHUB_OUTPUT
+          elif [[ "${{ contains(matrix.board, 'rp2040:rp2040') }}" == "true" ]]; then
+            # RP2040
+            echo "index-url=--additional-urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json" >> $GITHUB_OUTPUT
           fi
 
       - name: Install libraries
         if: ${{ env.run-build == 'true' }}
         run:
           |
+          #declare -a required_libs=("https://github.com/matthias-bs/BresserWeatherSensorReceiver.git"
           declare -a required_libs=(
-            "MQTT@2.6.0"
+            "BresserWeatherSensorReceiver@0.44.0"
+            "RadioLib@8.0.0"
+            "LoRa Serialization@3.3.1"
             "OneWireNg@0.14.1"
-            "NimBLE-Arduino@2.5.0"
-            "ArduinoJson@7.4.3")
+            "DallasTemperature@4.0.6"
+            "NimBLE-Arduino@2.5.2"
+            "ATC_MiThermometer@0.5.1"
+            "TheengsDecoder@2.5.0"
+            "Preferences@2.4.0"
+            "ArduinoJson@7.4.3"
+            "DYP-R01CW@0.1.1"
+            #"M5Unified@0.2.11"
+            "powerfeather-sdk@2.1.4")
           for i in "${required_libs[@]}"
           do
             arduino-cli lib install "$i"
           done
+          gh repo clone matthias-bs/DistanceSensor_A02YYUW
+          cp -r DistanceSensor_A02YYUW /home/runner/Arduino/libraries/
 
       - name: Install platform
         if: ${{ env.run-build == 'true' }}
         run:
           |
           arduino-cli core update-index ${{ format('{0}', steps.prep.outputs.index-url) }}
-          arduino-cli core install ${{ format('{0}:{1} {2}', steps.split.outputs._0, steps.split.outputs._1, steps.prep.outputs.index-url) }}
+          core_package="${{ format('{0}:{1}', steps.split.outputs._0, steps.split.outputs._1) }}"
+          if [[ "$core_package" == "esp32:esp32" ]]; then
+            core_package="${core_package}@3.3.13"
+          fi
+          arduino-cli core install "$core_package" ${{ format('{0}', steps.prep.outputs.index-url) }}
 
       - name: Checkout repository
         if: ${{ env.run-build == 'true' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Build sketch
         if: ${{ env.run-build == 'true' }}
@@ -94,7 +128,7 @@ jobs:
             else
               # build sketch
               echo -e "\n\033[1;33mBuilding ${example##*/} ... \033[0m";
-              arduino-cli compile --libraries /home/runner/work/14_arduino/Flora2Arduino --fqbn ${{ matrix.board }}${{ steps.prep.outputs.options }} $example --warnings=${{ steps.prep.outputs.warnings }}
+              arduino-cli compile --libraries /home/runner/work/BresserWeatherSensorReceiver --fqbn ${{ matrix.board }}${{ steps.prep.outputs.options }} $example --warnings=${{ steps.prep.outputs.warnings }}
 
               if [ $? -ne 0 ]; then
                 echo -e "\033[1;31m${example##*/} build FAILED\033[0m\n";
