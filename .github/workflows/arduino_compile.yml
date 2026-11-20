@@ -27,7 +27,6 @@ jobs:
           #- esp32:esp32:m5stack_core2 # Needs arduino-esp32 v3.0.7
           - esp32:esp32:esp32s3_powerfeather:Revision=V1
           - esp32:esp32:esp32s3_powerfeather:Revision=V2
-          - esp32:esp32:adafruit_feather_esp32s2
           - esp32:esp32:XIAO_ESP32S3
 
     runs-on: ubuntu-latest
