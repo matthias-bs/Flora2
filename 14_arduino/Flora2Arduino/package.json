@@ -21,7 +21,7 @@
   "dependencies": {
     "NimBLE-Arduino": "h2zero/NimBLE-Arduino#semver:^2.5.0",
     "ArduinoJson": "bblanchon/ArduinoJson#semver:^7.4.3",
-    "arduino-mqtt": "256dpi/arduino-mqtt#semver:^2.5.3"
+    "arduino-mqtt": "256dpi/arduino-mqtt#semver:^2.6.0"
   },
   "optionalDependencies": {
     "pocketBME280": "angrest/pocketBME280#semver:^1.2.4",

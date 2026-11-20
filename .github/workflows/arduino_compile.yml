@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 jobs:
-
   build:
     strategy:
       matrix:
@@ -59,26 +58,43 @@ jobs:
         if: ${{ env.run-build == 'true' }}
         run:
           |
+          #declare -a required_libs=("https://github.com/matthias-bs/BresserWeatherSensorReceiver.git"
           declare -a required_libs=(
-            "MQTT@2.5.3"
+            "BresserWeatherSensorReceiver@0.44.0"
+            "RadioLib@8.0.0"
+            "LoRa Serialization@3.3.1"
+            "MQTT@2.6.0"
             "OneWireNg@0.14.1"
-            "NimBLE-Arduino@2.5.0"
-            "ArduinoJson@7.4.3")
+            "DallasTemperature@4.0.6"
+            "NimBLE-Arduino@2.5.2"
+            "ATC_MiThermometer@0.5.1"
+            "TheengsDecoder@2.5.0"
+            "Preferences@2.4.0"
+            "ArduinoJson@7.4.3"
+            "DYP-R01CW@0.1.1"
+            #"M5Unified@0.2.11"
+            "powerfeather-sdk@2.1.4")
           for i in "${required_libs[@]}"
           do
             arduino-cli lib install "$i"
           done
+          gh repo clone matthias-bs/DistanceSensor_A02YYUW
+          cp -r DistanceSensor_A02YYUW /home/runner/Arduino/libraries/
 
       - name: Install platform
         if: ${{ env.run-build == 'true' }}
         run:
           |
           arduino-cli core update-index ${{ format('{0}', steps.prep.outputs.index-url) }}
-          arduino-cli core install ${{ format('{0}:{1} {2}', steps.split.outputs._0, steps.split.outputs._1, steps.prep.outputs.index-url) }}
+          core_package="${{ format('{0}:{1}', steps.split.outputs._0, steps.split.outputs._1) }}"
+          if [[ "$core_package" == "esp32:esp32" ]]; then
+            core_package="${core_package}@3.3.13"
+          fi
+          arduino-cli core install "$core_package" ${{ format('{0}', steps.prep.outputs.index-url) }}
 
       - name: Checkout repository
         if: ${{ env.run-build == 'true' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Build sketch
         if: ${{ env.run-build == 'true' }}
@@ -94,7 +110,7 @@ jobs:
             else
               # build sketch
               echo -e "\n\033[1;33mBuilding ${example##*/} ... \033[0m";
-              arduino-cli compile --libraries /home/runner/work/14_arduino/Flora2Arduino --fqbn ${{ matrix.board }}${{ steps.prep.outputs.options }} $example --warnings=${{ steps.prep.outputs.warnings }}
+              arduino-cli compile --libraries /home/runner/work/BresserWeatherSensorReceiver --fqbn ${{ matrix.board }}${{ steps.prep.outputs.options }} $example --warnings=${{ steps.prep.outputs.warnings }}
 
               if [ $? -ne 0 ]; then
                 echo -e "\033[1;31m${example##*/} build FAILED\033[0m\n";
